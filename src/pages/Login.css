@@ -1,0 +1,151 @@
+* {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    font-family:
+      Inter, Arial, Helvetica, sans-serif;
+  }
+  
+  button,
+  input {
+    font: inherit;
+  }
+  
+  .login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+      linear-gradient(
+        135deg,
+        #eef7f8,
+        #f8fafc
+      );
+  }
+  
+  .login-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.12);
+  }
+  
+  .login-header {
+    margin-bottom: 32px;
+  }
+  
+  .login-label {
+    margin: 0 0 8px;
+    color: #007c91;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .login-header h1 {
+    margin: 0 0 12px;
+    color: #0f172a;
+    font-size: 28px;
+  }
+  
+  .login-header p {
+    margin: 0;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    outline: none;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+  
+  .form-group input:focus {
+    border-color: #007c91;
+    box-shadow: 0 0 0 3px rgba(0, 124, 145, 0.13);
+  }
+  
+  .login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    gap: 16px;
+  }
+  
+  .remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    font-size: 14px;
+  }
+  
+  .forgot-password {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #007c91;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .login-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #007c91;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      transform 0.2s;
+  }
+  
+  .login-button:hover {
+    background: #006579;
+    transform: translateY(-1px);
+  }
+  
+  .error-message {
+    margin: 0 0 16px;
+    color: #dc2626;
+    font-size: 14px;
+  }
+  
+  @media (max-width: 520px) {
+    .login-card {
+      padding: 28px 22px;
+    }
+  
+    .login-options {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
