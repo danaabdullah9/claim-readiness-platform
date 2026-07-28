@@ -91,7 +91,8 @@ function UploadField({ id, label, file, onChange, onRemove }) {
   );
 }
 
-function NewClaim({ onBack }) {
+// 1. Added onSubmitClaim to the props here
+function NewClaim({ onBack, onSubmitClaim }) {
   const [selectedClaimType, setSelectedClaimType] = useState("");
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
@@ -124,12 +125,24 @@ function NewClaim({ onBack }) {
       return;
     }
 
-    console.log({
-      claimType: selectedClaimType,
-      invoiceFileName: invoiceFile.name,
-      prescriptionFileName: prescriptionFile.name,
-    });
     setSuccessMessage("Documents added successfully.");
+
+    // 2. Package data and trigger the summary page transition
+    if (onSubmitClaim) {
+      onSubmitClaim({
+        MemberId: "12345", // You can replace with real inputs if you add text fields later
+        NationalId: "1098765432",
+        PatientName: "Ahmed Ali",
+        InvoiceNumber: "INV-001",
+        InvoiceDate: "2026-07-28",
+        HospitalName: "King Faisal Hospital",
+        DiagnosisCode: "J02.9",
+        DiagnosisDescription: selectedClaimType,
+        DoctorName: "Dr. Sarah",
+        ClinicalSummary: `Uploaded files: ${invoiceFile.name}, ${prescriptionFile.name}`,
+        TotalAmount: "500 SAR",
+      });
+    }
   }
 
   return (
