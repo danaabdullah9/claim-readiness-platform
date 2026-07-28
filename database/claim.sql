@@ -48,7 +48,13 @@
 
 
 -- SELECT * FROM USERS;
-
+INSERT INTO USERS (name, email, phone_number, password)
+VALUES (
+    'Dana',
+    'user@bupa.com',
+    '0555555555',
+    '123456'
+);
 
 SELECT name
 FROM sqlite_master

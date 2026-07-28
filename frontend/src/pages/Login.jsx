@@ -6,20 +6,42 @@ function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSubmit(event) {
+  event.preventDefault();
 
-    if (!email || !password) {
-      setError("Please enter your email and password.");
-      return;
-    }
-
-    setError("");
-    console.log("Email:", email);
-    console.log("Password:", password);
-
-    alert("Login submitted successfully.");
+  if (!email || !password) {
+    setError("Please enter your email and password.");
+    return;
   }
+
+  setError("");
+
+  try {
+    const response = await fetch("http://127.0.0.1:8001/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert(`Welcome ${data.user.name}!`);
+
+      console.log(data);
+    } else {
+      setError(data.detail);
+    }
+  } catch (err) {
+    setError("Cannot connect to backend.");
+    console.error(err);
+  }
+}
 
   return (
     <div className="login-page">
