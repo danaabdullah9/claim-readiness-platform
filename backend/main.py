@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from database import get_connection
 
 app = FastAPI(title="Claim Readiness Platform - Auth")
 
@@ -21,21 +22,36 @@ class LoginRequest(BaseModel):
 # 🔐 Endpoint تسجيل الدخول
 @app.post("/login")
 async def login(credentials: LoginRequest):
-    # بيانات التجربة المعتمدة
-    if credentials.email == "user@bupa.com" and credentials.password == "123456":
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT * FROM USERS
+        WHERE email = ? AND password = ?
+    """, (credentials.email, credentials.password))
+
+    user = cursor.fetchone()
+
+    conn.close()
+
+    if user:
         return {
             "status": "success",
             "message": "Login successful",
             "user": {
-                "email": credentials.email,
-                "role": "admin"
+                "id": user["user_ID"],
+                "name": user["name"],
+                "email": user["email"]
             }
         }
-    else:
-        raise HTTPException(
-            status_code=401, 
-            detail="Invalid email or password"
-        )
+
+    raise HTTPException(
+        status_code=401,
+        detail="Invalid email or password"
+    )
+
+
 
 if __name__ == "__main__":
     import uvicorn
