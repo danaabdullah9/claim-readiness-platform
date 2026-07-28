@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import get_connection
 
-app = FastAPI(title="Claim Readiness Platform - Auth")
+# استيراد دالة التحليل من ملف الـ AI الموجود معك في نفس المجلد (backend)
+from ai_service import analyze_claim
+
+app = FastAPI(title="Claim Readiness Platform - Backend")
 
 # السماح للفرونت إند بالاتصال بالباك إند بدون مشاكل CORS
 app.add_middleware(
@@ -14,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Structure البيانات المطلوبة من الفرونت إند
+# Structure البيانات المطلوبة لتسجيل الدخول
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -22,7 +25,6 @@ class LoginRequest(BaseModel):
 # 🔐 Endpoint تسجيل الدخول
 @app.post("/login")
 async def login(credentials: LoginRequest):
-
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -32,7 +34,6 @@ async def login(credentials: LoginRequest):
     """, (credentials.email, credentials.password))
 
     user = cursor.fetchone()
-
     conn.close()
 
     if user:
@@ -51,7 +52,24 @@ async def login(credentials: LoginRequest):
         detail="Invalid email or password"
     )
 
-
+# 🤖 Endpoint معالجة المطالبات والذكاء الاصطناعي (مرتبط بـ NewClaim.jsx)
+@app.post("/api/analyze-claim")
+async def analyze_claim_endpoint(
+    invoice: UploadFile = File(...), 
+    report: UploadFile = File(...)
+):
+    try:
+        # استدعاء دالة الـ AI اللي في ملف ai_service.py لمعالجة الفاتورة والتقرير
+        result = await analyze_claim(invoice, report)
+        return {
+            "status": "success",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 if __name__ == "__main__":
     import uvicorn
