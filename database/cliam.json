@@ -1,0 +1,48 @@
+{
+  "claimId": "CLM-001",
+
+  "claimType": "Dental",
+
+  "member": {
+    "memberId": "BP12345",
+    "name": "Ahmed Ali"
+  },
+
+  "provider": {
+    "providerId": "PR001",
+    "name": "Smile Dental Clinic"
+  },
+
+  "serviceDate": "2026-07-20",
+
+  "diagnosisCodes": [
+    "K02.1"
+  ],
+
+  "procedureCodes": [
+    "D1110"
+  ],
+
+  "attachments": [
+    {
+      "type": "Invoice",
+      "fileName": "invoice.pdf"
+    },
+    {
+      "type": "Receipt",
+      "fileName": "receipt.pdf"
+    }
+  ],
+
+  "items": [
+    {
+      "serviceType": "Dental Cleaning",
+      "description": "Scaling & Polishing",
+      "amount": 350
+    }
+  ],
+
+  "status": "Pending",
+
+  "extractionConfidence": 0.96
+}
