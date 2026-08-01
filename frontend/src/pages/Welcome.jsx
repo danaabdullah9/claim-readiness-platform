@@ -1,4 +1,5 @@
 import "./Welcome.css";
+import bupaLogo from "../assets/bupa-logo.png";
 
 function Welcome({ onGetStarted }) {
   return (
@@ -7,16 +8,17 @@ function Welcome({ onGetStarted }) {
       <div className="welcome-background-shape shape-two"></div>
 
       <main className="welcome-content">
-        <div className="welcome-logo">
-          <span>BUPA</span>
-          <small>ARABIA</small>
-        </div>
+        <img
+          className="welcome-logo"
+          src={bupaLogo}
+          alt="Bupa Arabia"
+        />
 
-        <p className="welcome-label">Claims Management</p>
+        <p className="welcome-label">Bupa Arabia</p>
 
         <h1>
           Welcome to
-          <span> Claim Readiness Platform</span>
+          <span> Care Flow</span>
         </h1>
 
         <p className="welcome-description">

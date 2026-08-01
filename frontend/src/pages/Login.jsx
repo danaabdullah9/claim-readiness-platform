@@ -63,7 +63,7 @@ function Login({ onLogin }) {
       <div className="login-card">
         <div className="login-header">
           <p className="login-label">Claims Management</p>
-          <h1>Claim Readiness Platform</h1>
+          <h1>Care Flow</h1>
           <p>Sign in to review and manage insurance claims.</p>
         </div>
 
