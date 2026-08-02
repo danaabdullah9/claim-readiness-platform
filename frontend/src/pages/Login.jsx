@@ -108,6 +108,17 @@ function Login({ onLogin }) {
           <button type="submit" className="login-button">
             Sign in
           </button>
+
+          <button
+            type="button"
+            className="back-to-welcome-button"
+            onClick={() => {
+              window.location.hash = "";
+              window.location.reload();
+            }}
+          >
+            ← Back to Welcome
+          </button>
         </form>
       </div>
     </div>
