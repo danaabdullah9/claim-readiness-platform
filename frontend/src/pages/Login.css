@@ -132,6 +132,24 @@
     background: #006579;
     transform: translateY(-1px);
   }
+
+  .back-to-welcome-button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .back-to-welcome-button:hover {
+    background: #f1f7f8;
+    color: #007c91;
+  }
   
   .error-message {
     margin: 0 0 16px;
