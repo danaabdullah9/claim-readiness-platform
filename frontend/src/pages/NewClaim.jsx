@@ -91,6 +91,8 @@ function UploadField({ id, label, file, onChange, onRemove }) {
   );
 }
 
+const API_BASE_URL = "http://127.0.0.1:8000";
+
 // 1. Added onSubmitClaim to the props here
 function NewClaim({ onBack, onSubmitClaim }) {
   const [selectedClaimType, setSelectedClaimType] = useState("");
@@ -98,6 +100,8 @@ function NewClaim({ onBack, onSubmitClaim }) {
   const [prescriptionFile, setPrescriptionFile] = useState(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isComplete =
     Boolean(selectedClaimType) && Boolean(invoiceFile) && Boolean(prescriptionFile);
@@ -117,31 +121,47 @@ function NewClaim({ onBack, onSubmitClaim }) {
     };
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setHasInteracted(true);
+    setSubmitError("");
 
-    if (!isComplete) {
+    if (!isComplete || isSubmitting) {
       return;
     }
 
-    setSuccessMessage("Documents added successfully.");
+    setIsSubmitting(true);
 
-    // 2. Package data and trigger the summary page transition
-    if (onSubmitClaim) {
-      onSubmitClaim({
-        MemberId: "12345", // You can replace with real inputs if you add text fields later
-        NationalId: "1098765432",
-        PatientName: "Ahmed Ali",
-        InvoiceNumber: "INV-001",
-        InvoiceDate: "2026-07-28",
-        HospitalName: "King Faisal Hospital",
-        DiagnosisCode: "J02.9",
-        DiagnosisDescription: selectedClaimType,
-        DoctorName: "Dr. Sarah",
-        ClinicalSummary: `Uploaded files: ${invoiceFile.name}, ${prescriptionFile.name}`,
-        TotalAmount: "500 SAR",
+    try {
+      const formData = new FormData();
+      formData.append("invoice", invoiceFile);
+      formData.append("report", prescriptionFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/analyze-claim`, {
+        method: "POST",
+        body: formData,
       });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const detail =
+          typeof result.detail === "string"
+            ? result.detail
+            : result.detail?.message || "Failed to submit the claim.";
+        throw new Error(detail);
+      }
+
+      setSuccessMessage("Documents added successfully.");
+
+      // 2. Trigger the summary page transition using the claim saved by the backend
+      if (onSubmitClaim) {
+        onSubmitClaim(result.claim_id);
+      }
+    } catch (err) {
+      setSubmitError(err.message || "Cannot connect to backend.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -233,6 +253,12 @@ function NewClaim({ onBack, onSubmitClaim }) {
             </p>
           )}
 
+          {submitError && (
+            <p className="field-error" role="alert">
+              {submitError}
+            </p>
+          )}
+
           <div className="new-claim-actions">
             <button type="button" className="secondary-button" onClick={onBack}>
               Back
@@ -240,9 +266,9 @@ function NewClaim({ onBack, onSubmitClaim }) {
             <button
               type="submit"
               className="continue-button"
-              disabled={!isComplete}
+              disabled={!isComplete || isSubmitting}
             >
-              Continue
+              {isSubmitting ? "Analyzing..." : "Continue"}
             </button>
           </div>
         </form>

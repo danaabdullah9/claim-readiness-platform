@@ -5,8 +5,10 @@ import NewClaim from "./pages/NewClaim";
 import Summary from "./pages/Summary";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("welcome");
-  const [formData, setFormData] = useState({});
+  const debugParams = new URLSearchParams(window.location.search);
+  const debugClaimId = debugParams.get("debugClaimId");
+  const [currentPage, setCurrentPage] = useState(debugClaimId ? "summary" : "welcome");
+  const [claimId, setClaimId] = useState(debugClaimId ? Number(debugClaimId) : null);
 
   if (currentPage === "login") {
     return <Login onLogin={() => setCurrentPage("newClaim")} />;
@@ -14,25 +16,25 @@ function App() {
 
   if (currentPage === "newClaim") {
     return (
-      <NewClaim 
-        onBack={() => setCurrentPage("login")} 
-        onSubmitClaim={(data) => {
-          setFormData(data);
+      <NewClaim
+        onBack={() => setCurrentPage("login")}
+        onSubmitClaim={(newClaimId) => {
+          setClaimId(newClaimId);
           setCurrentPage("summary");
-        }} 
+        }}
       />
     );
   }
 
   if (currentPage === "summary") {
     return (
-      <Summary 
-        formData={formData} 
-        onEdit={() => setCurrentPage("newClaim")} 
+      <Summary
+        claimId={claimId}
+        onEdit={() => setCurrentPage("newClaim")}
         onSubmit={() => {
           alert("Claim submitted successfully!");
           setCurrentPage("welcome");
-        }} 
+        }}
       />
     );
   }

@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import fitz  # PyMuPDF
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
@@ -18,18 +19,73 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# حماية بسيطة من ملفات PDF كبيرة جدًا قبل إرسالها للـ OpenAI
+MAX_PDF_PAGES = 10
+PDF_RENDER_ZOOM = 2.0  # يقارب 144 DPI، كافٍ لقراءة النصوص بوضوح
+
+
+def _is_pdf(content_type, filename, content_bytes):
+    if (content_type or "").lower() == "application/pdf":
+        return True
+    if (filename or "").lower().endswith(".pdf"):
+        return True
+    return content_bytes[:5] == b"%PDF-"
+
+
+def _pdf_to_data_urls(pdf_bytes):
+    """يحوّل كل صفحة من ملف PDF إلى صورة PNG مُرمّزة base64."""
+    data_urls = []
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        if doc.page_count > MAX_PDF_PAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"PDF has too many pages ({doc.page_count}). Maximum allowed is {MAX_PDF_PAGES}."
+            )
+
+        matrix = fitz.Matrix(PDF_RENDER_ZOOM, PDF_RENDER_ZOOM)
+        for page in doc:
+            pixmap = page.get_pixmap(matrix=matrix)
+            png_bytes = pixmap.tobytes("png")
+            data_urls.append(f"data:image/png;base64,{base64.b64encode(png_bytes).decode('utf-8')}")
+    finally:
+        doc.close()
+
+    return data_urls
+
+
+def _file_to_data_urls(content_bytes, content_type, filename):
+    """يرجع قائمة data URLs: عنصر واحد للصور، وعنصر لكل صفحة لو كان الملف PDF."""
+    if _is_pdf(content_type, filename, content_bytes):
+        return _pdf_to_data_urls(content_bytes)
+
+    mime = content_type or "image/jpeg"
+    return [f"data:{mime};base64,{base64.b64encode(content_bytes).decode('utf-8')}"]
+
+
+def _append_document_content(content, label, content_bytes, content_type, filename):
+    """يضيف نص الوصف وصور المستند (صفحة واحدة أو أكثر) لقائمة محتوى الرسالة."""
+    data_urls = _file_to_data_urls(content_bytes, content_type, filename)
+
+    if len(data_urls) == 1:
+        content.append({"type": "text", "text": label})
+        content.append({"type": "image_url", "image_url": {"url": data_urls[0]}})
+    else:
+        base_label = label[:-1] if label.endswith(":") else label
+        for index, url in enumerate(data_urls, start=1):
+            content.append({"type": "text", "text": f"{base_label} (page {index} of {len(data_urls)}):"})
+            content.append({"type": "image_url", "image_url": {"url": url}})
+
+
 async def analyze_claim(invoice: UploadFile, report: UploadFile):
     # تعريف العميل هنا يضمن قراءة الـ API Key بشكل صحيح بدون أخطاء
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     
     try:
         print(f"📄 Processing Claim - Invoice: {invoice.filename}, Report: {report.filename}")
-        
+
         invoice_contents = await invoice.read()
-        invoice_base64 = f"data:{invoice.content_type or 'image/jpeg'};base64,{base64.b64encode(invoice_contents).decode('utf-8')}"
-        
         report_contents = await report.read()
-        report_base64 = f"data:{report.content_type or 'image/jpeg'};base64,{base64.b64encode(report_contents).decode('utf-8')}"
 
         prompt = """
         You are an expert medical claims and insurance AI auditor and validator.
@@ -75,18 +131,22 @@ async def analyze_claim(invoice: UploadFile, report: UploadFile):
         }
         """
 
+        message_content = [{"type": "text", "text": prompt}]
+        _append_document_content(
+            message_content, "This is the Medical Invoice:",
+            invoice_contents, invoice.content_type, invoice.filename
+        )
+        _append_document_content(
+            message_content, "This is the Medical Report:",
+            report_contents, report.content_type, report.filename
+        )
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "text", "text": "This is the Medical Invoice:"},
-                        {"type": "image_url", "image_url": {"url": invoice_base64}},
-                        {"type": "text", "text": "This is the Medical Report:"},
-                        {"type": "image_url", "image_url": {"url": report_base64}}
-                    ]
+                    "content": message_content
                 }
             ],
             response_format={"type": "json_object"}
