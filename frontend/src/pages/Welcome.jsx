@@ -1,7 +1,7 @@
 import "./Welcome.css";
 import bupaLogo from "../assets/bupa-logo.png";
 
-function Welcome({ onGetStarted }) {
+function Welcome({ onGetStarted, onEmployeePortal }) {
   return (
     <div className="welcome-page">
       <div className="welcome-background-shape shape-one"></div>
@@ -26,12 +26,17 @@ function Welcome({ onGetStarted }) {
           reimbursement claims.
         </p>
 
-       <button 
-       className="welcome-button" 
-       onClick={onGetStarted}
-      >
-  Get Started
-</button>
+        <div className="welcome-actions">
+          <button className="welcome-button" onClick={onGetStarted}>
+            Member Portal
+          </button>
+          <button
+            className="welcome-button welcome-employee-button"
+            onClick={onEmployeePortal}
+          >
+            Employee Portal
+          </button>
+        </div>
 
         <p className="welcome-note">
           Upload your documents and let the system prepare your claim.
