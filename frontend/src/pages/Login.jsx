@@ -18,7 +18,7 @@ function Login({ onLogin }) {
   setError("");
 
   try {
-    const response = await fetch("http://127.0.0.1:8001/login", {
+    const response = await fetch("http://127.0.0.1:8000/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -107,6 +107,17 @@ function Login({ onLogin }) {
 
           <button type="submit" className="login-button">
             Sign in
+          </button>
+
+          <button
+            type="button"
+            className="back-to-welcome-button"
+            onClick={() => {
+              window.location.hash = "";
+              window.location.reload();
+            }}
+          >
+            ← Back to Welcome
           </button>
         </form>
       </div>
