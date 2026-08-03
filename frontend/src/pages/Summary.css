@@ -113,3 +113,147 @@
   max-width: 60%;
   word-break: break-word;
 }
+/* ===================================================================
+   AI verification banner + grouped summary layout
+   =================================================================== */
+
+.summary-header {
+  margin-bottom: 22px;
+}
+
+.verification-banner {
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.verification-banner.passed  { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.verification-banner.warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.verification-banner.failed  { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+.verification-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.verification-head strong {
+  display: block;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.verification-head small {
+  display: block;
+  margin-top: 3px;
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
+.verification-icon {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  background: currentColor;
+}
+
+.verification-banner.passed  .verification-icon { background: #059669; }
+.verification-banner.warning .verification-icon { background: #d97706; }
+.verification-banner.failed  .verification-icon { background: #dc2626; }
+
+.verification-message {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+
+.discrepancy-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.discrepancy-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.discrepancy-list strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.discrepancy-list small {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.8;
+  font-size: 0.8rem;
+}
+
+.severity {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.severity.high { background: #dc2626; }
+.severity.low  { background: #d97706; }
+
+.coverage-hint {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.85rem;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* عناوين المجموعات داخل الكرت */
+.summary-group-title {
+  margin: 22px 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: left;
+}
+
+.summary-group-title:first-child {
+  margin-top: 0;
+}
+
+.document-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.document-chip {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px 9px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.submit-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -7,24 +7,58 @@ import ClaimTimeline from "../../components/employee/ClaimTimeline";
 import ConfirmationDialog from "../../components/employee/ConfirmationDialog";
 import "./EmployeeDashboard.css";
 
+const API_BASE_URL = "http://127.0.0.1:8001";
+
 const formatMoney = (amount, currency) => new Intl.NumberFormat("en-SA", { style: "currency", currency }).format(amount);
+
+// Approve / Reject تكتب فعليًا في عمود ClaimStatus بدل ما تبقى في المتصفح
+const BACKEND_ACTIONS = { Approve: "Approved", Reject: "Rejected" };
 
 function DetailList({ items }) {
   return <dl className="employee-detail-list">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>;
 }
 
-function ClaimReview({ claim, onBack }) {
+function ClaimReview({ claim: initialClaim, onBack }) {
+  const [claim, setClaim] = useState(initialClaim);
   const [notes, setNotes] = useState("");
   const [notice, setNotice] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   function handlePlaceholder(action) {
     setNotice(`${action} recorded for this review session only. No backend data was changed.`);
   }
 
-  function confirmAction() {
-    handlePlaceholder(pendingAction.label);
+  async function confirmAction() {
+    const label = pendingAction.label;
+    const backendStatus = BACKEND_ACTIONS[label];
     setPendingAction(null);
+
+    if (!backendStatus) {
+      handlePlaceholder(label);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/employee/claims/${claim.claimDbId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: backendStatus }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Could not update the claim.");
+
+      setClaim({ ...result.data, assignedTo: claim.assignedTo });
+      setNotice(`Claim ${claim.id} was ${backendStatus.toLowerCase()} and saved to the database.`);
+    } catch (err) {
+      setNotice(err.message || "Cannot connect to backend.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -41,16 +75,16 @@ function ClaimReview({ claim, onBack }) {
         {notice && <div className="employee-notice" role="status"><span>✓</span>{notice}<button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}>×</button></div>}
         <div className="employee-review-layout">
           <div className="employee-review-primary">
-            <section className="employee-review-card" aria-labelledby="member-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Policy holder</p><h2 id="member-info-title">Member Information</h2></div></div><DetailList items={[["Member Name", claim.member.name], ["Member ID", claim.member.memberId], ["National ID", claim.member.nationalId], ["Policy Number", claim.member.policyNumber], ["Insurance Company", claim.insuranceCompany], ["Phone Number", claim.member.phone], ["Email", claim.member.email]]} /></section>
+            <section className="employee-review-card" aria-labelledby="member-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Policy holder</p><h2 id="member-info-title">Member Information</h2></div></div><DetailList items={[["Member Name", claim.member.name], ["Member ID", claim.member.memberId], ["National ID", claim.member.nationalId], ["Policy Number", claim.member.policyNumber], ["Insurance Company", claim.insuranceCompany], ["Submitted By", claim.submittedBy], ["Phone Number", claim.member.phone], ["Email", claim.member.email]]} /></section>
             <AIClaimSummary summary={claim.aiSummary} highlights={claim.highlights} confidence={claim.aiConfidence} />
-            <section className="employee-review-card" aria-labelledby="claim-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Submission details</p><h2 id="claim-info-title">Claim Information</h2></div></div><DetailList items={[["Claim ID", claim.id], ["Claim Type", claim.claimType], ["Service Type", claim.serviceType], ["Invoice Date", claim.invoiceDate], ["Hospital or Provider", claim.provider], ["Department", claim.department], ["Claim Amount", formatMoney(claim.amount, claim.currency)], ["Currency", claim.currency], ["Submission Date", claim.submissionDate], ["Current Status", claim.status], ["Priority", claim.priority]]} /></section>
+            <section className="employee-review-card" aria-labelledby="claim-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Submission details</p><h2 id="claim-info-title">Claim Information</h2></div></div><DetailList items={[["Claim ID", claim.id], ["Invoice Number", claim.invoiceNumber], ["Claim Type", claim.claimType], ["Service Type", claim.serviceType], ["Invoice Date", claim.invoiceDate], ["Hospital or Provider", claim.provider], ["Department", claim.department], ["Claim Amount", formatMoney(claim.amount, claim.currency)], ["Currency", claim.currency], ["Submission Date", claim.submissionDate], ["Current Status", claim.status], ["Priority", claim.priority]]} /></section>
             <UploadedDocuments documents={claim.documents} />
             <AIVerificationChecklist items={claim.verification} />
           </div>
           <aside className="employee-review-sidebar">
             <EmployeeNotes value={notes} onChange={setNotes} />
             <ClaimTimeline currentStage={claim.currentStage} />
-            <section className="employee-review-card employee-actions-card" aria-labelledby="actions-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Decision support</p><h2 id="actions-title">Employee Actions</h2></div></div><button type="button" className="employee-action-primary" onClick={() => setPendingAction({ label: "Approve", prompt: "approve this", tone: "primary" })}>Approve</button><button type="button" className="employee-action-danger" onClick={() => setPendingAction({ label: "Reject", prompt: "reject this", tone: "danger" })}>Reject</button><button type="button" onClick={() => setPendingAction({ label: "Request Missing Documents", prompt: "request missing documents for this", tone: "primary" })}>Request Missing Documents</button><button type="button" onClick={() => handlePlaceholder("Save Draft")}>Save Draft</button><button type="button" onClick={() => setPendingAction({ label: "Assign Claim", prompt: "assign this", tone: "primary" })}>Assign to Another Employee</button><p>Actions remain in this browser session until backend workflow endpoints are available.</p></section>
+            <section className="employee-review-card employee-actions-card" aria-labelledby="actions-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Decision support</p><h2 id="actions-title">Employee Actions</h2></div></div><button type="button" className="employee-action-primary" disabled={isSaving} onClick={() => setPendingAction({ label: "Approve", prompt: "approve this", tone: "primary" })}>{isSaving ? "Saving…" : "Approve"}</button><button type="button" className="employee-action-danger" disabled={isSaving} onClick={() => setPendingAction({ label: "Reject", prompt: "reject this", tone: "danger" })}>Reject</button><button type="button" onClick={() => setPendingAction({ label: "Request Missing Documents", prompt: "request missing documents for this", tone: "primary" })}>Request Missing Documents</button><button type="button" onClick={() => handlePlaceholder("Save Draft")}>Save Draft</button><button type="button" onClick={() => setPendingAction({ label: "Assign Claim", prompt: "assign this", tone: "primary" })}>Assign to Another Employee</button><p>Approve and Reject update the claim status in the database. The remaining actions stay in this session.</p></section>
           </aside>
         </div>
       </main>

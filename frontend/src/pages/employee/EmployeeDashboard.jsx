@@ -1,15 +1,24 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SummaryCards from "../../components/employee/SummaryCards";
 import ClaimFilters from "../../components/employee/ClaimFilters";
 import ClaimsTable from "../../components/employee/ClaimsTable";
 import EmployeeLogin from "../../components/employee/EmployeeLogin";
-import { demoEmployees, employeeClaims } from "../../data/employeeClaims";
+import { demoEmployees } from "../../data/employeeClaims";
 import "./EmployeeDashboard.css";
 
+const API_BASE_URL = "http://127.0.0.1:8001";
 const DAY = 24 * 60 * 60 * 1000;
 
+function daysOld(claim) {
+  if (!claim.submissionDate) return Number.POSITIVE_INFINITY;
+  const submitted = new Date(`${claim.submissionDate}T12:00:00`);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return Math.round((today - submitted) / DAY);
+}
+
 function matchesFilter(claim, filter) {
-  const age = (new Date("2026-08-02T12:00:00") - new Date(`${claim.submissionDate}T12:00:00`)) / DAY;
+  const age = daysOld(claim);
   if (filter === "My Claims") return true;
   if (filter === "Pending Review") return ["Pending Review", "Under Review"].includes(claim.status);
   if (filter === "Waiting for Member") return claim.status === "Waiting for Member";
@@ -31,25 +40,65 @@ function EmployeeDashboard({ onOpenClaim }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("All Claims");
 
-  const assignedClaims = useMemo(
-    () => employeeClaims.filter((claim) => claim.assignedTo === employee?.name),
-    [employee],
-  );
+  // المطالبات الحقيقية من قاعدة البيانات بدل الملف الوهمي
+  const [claims, setClaims] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  const loadClaims = useCallback(async () => {
+    if (!employee) return;
+
+    setIsLoading(true);
+    setLoadError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/employee/claims`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.detail || "Failed to load claims.");
+      }
+
+      // ما فيه عمود تكليف في السكيمة، فكل المطالبات معروضة للموظف الحالي
+      setClaims(
+        (result.data || []).map((claim) => ({ ...claim, assignedTo: employee.name })),
+      );
+    } catch (err) {
+      setLoadError(err.message || "Cannot connect to backend.");
+      setClaims([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [employee]);
+
+  useEffect(() => {
+    loadClaims();
+  }, [loadClaims]);
 
   const filteredClaims = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return assignedClaims.filter((claim) => {
-      const searchable = [claim.id, claim.member.name, claim.member.nationalId, claim.member.policyNumber, claim.provider].join(" ").toLowerCase();
+    return claims.filter((claim) => {
+      const searchable = [
+        claim.id,
+        claim.member.name,
+        claim.member.nationalId,
+        claim.member.policyNumber,
+        claim.invoiceNumber,
+        claim.provider,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
       return (!term || searchable.includes(term)) && matchesFilter(claim, activeFilter);
     });
-  }, [assignedClaims, search, activeFilter]);
+  }, [claims, search, activeFilter]);
 
   const counts = {
-    assigned: assignedClaims.length,
-    pending: assignedClaims.filter((claim) => ["Pending Review", "Under Review", "Missing Documents"].includes(claim.status)).length,
-    waiting: assignedClaims.filter((claim) => claim.status === "Waiting for Member").length,
-    ready: assignedClaims.filter((claim) => claim.status === "Ready for Submission").length,
-    completed: assignedClaims.filter((claim) => claim.status === "Completed" && claim.completionDate === "2026-08-02").length,
+    assigned: claims.length,
+    pending: claims.filter((claim) => ["Pending Review", "Under Review", "Missing Documents"].includes(claim.status)).length,
+    waiting: claims.filter((claim) => claim.status === "Waiting for Member").length,
+    ready: claims.filter((claim) => claim.status === "Ready for Submission").length,
+    completed: claims.filter((claim) => claim.status === "Completed").length,
   };
 
   function handleLogin(selectedEmployee) {
@@ -62,6 +111,7 @@ function EmployeeDashboard({ onOpenClaim }) {
   function handleLogout() {
     localStorage.removeItem("careflow-demo-employee");
     setEmployee(null);
+    setClaims([]);
     setSearch("");
     setActiveFilter("All Claims");
   }
@@ -69,6 +119,8 @@ function EmployeeDashboard({ onOpenClaim }) {
   if (!employee) {
     return <EmployeeLogin employees={demoEmployees} onLogin={handleLogin} />;
   }
+
+  const today = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
 
   return (
     <div className="employee-dashboard-page">
@@ -78,13 +130,14 @@ function EmployeeDashboard({ onOpenClaim }) {
       </header>
       <main className="employee-dashboard-main">
         <section className="employee-dashboard-intro">
-          <div><p className="employee-eyebrow">Claims operations</p><h1>Employee Dashboard</h1><p>Welcome back, {employee.name.split(" ")[0]}. You have <strong>{counts.assigned} claims</strong> currently assigned to you.</p></div>
-          <span className="employee-date">02 August 2026</span>
+          <div><p className="employee-eyebrow">Claims operations</p><h1>Employee Dashboard</h1><p>Welcome back, {employee.name.split(" ")[0]}. There {claims.length === 1 ? "is" : "are"} <strong>{claims.length} claim{claims.length === 1 ? "" : "s"}</strong> in the queue.</p></div>
+          <span className="employee-date">{today}</span>
         </section>
         <SummaryCards counts={counts} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
         <section className="employee-work-queue" aria-labelledby="work-queue-title">
-          <div className="employee-queue-heading"><div><p className="employee-eyebrow">Assigned claims</p><h2 id="work-queue-title">My Work Queue</h2></div><p>Review and process reimbursement claims requiring attention.</p></div>
-          <ClaimFilters search={search} onSearchChange={setSearch} activeFilter={activeFilter} onFilterChange={setActiveFilter} resultCount={filteredClaims.length} totalCount={employee.totalClaims} />
+          <div className="employee-queue-heading"><div><p className="employee-eyebrow">Submitted claims</p><h2 id="work-queue-title">My Work Queue</h2></div><button type="button" className="employee-table-action" onClick={loadClaims} disabled={isLoading}>{isLoading ? "Refreshing…" : "Refresh"}</button></div>
+          {loadError && <div className="employee-notice" role="alert"><span>!</span>{loadError}</div>}
+          <ClaimFilters search={search} onSearchChange={setSearch} activeFilter={activeFilter} onFilterChange={setActiveFilter} resultCount={filteredClaims.length} totalCount={claims.length} />
           <ClaimsTable claims={filteredClaims} onOpenClaim={onOpenClaim} />
         </section>
       </main>

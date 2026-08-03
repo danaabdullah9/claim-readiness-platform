@@ -91,7 +91,7 @@ function UploadField({ id, label, file, onChange, onRemove }) {
   );
 }
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "http://127.0.0.1:8001";
 
 // 1. Added onSubmitClaim to the props here
 function NewClaim({ onBack, onSubmitClaim, userId }) {
@@ -101,6 +101,7 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [submitError, setSubmitError] = useState("");
+  const [rejections, setRejections] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isComplete =
@@ -110,6 +111,8 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
     setSelectedClaimType(claimType);
     setHasInteracted(true);
     setSuccessMessage("");
+    setRejections([]);
+    setSubmitError("");
   }
 
   function updateFile(setFile) {
@@ -117,6 +120,8 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
       setFile(event.target.files?.[0] ?? null);
       setHasInteracted(true);
       setSuccessMessage("");
+      setRejections([]);
+      setSubmitError("");
       event.target.value = "";
     };
   }
@@ -125,8 +130,21 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
     event.preventDefault();
     setHasInteracted(true);
     setSubmitError("");
+    setRejections([]);
 
     if (!isComplete || isSubmitting) {
+      return;
+    }
+
+    // حارس: نفس الملف في الخانتين = الفاتورة ما تنقرأ أبدًا
+    if (
+      invoiceFile.name === prescriptionFile.name &&
+      invoiceFile.size === prescriptionFile.size &&
+      invoiceFile.lastModified === prescriptionFile.lastModified
+    ) {
+      setSubmitError(
+        "You uploaded the same file twice. Please add the invoice in the Invoice field."
+      );
       return;
     }
 
@@ -148,6 +166,13 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
       const result = await response.json();
 
       if (!response.ok) {
+        // 422 مع قائمة أسباب = المطالبة رُفضت بقواعد القبول، فنعرضها ولا ننتقل
+        const reasons = result.detail?.rejections;
+        if (Array.isArray(reasons) && reasons.length > 0) {
+          setRejections(reasons);
+          return;
+        }
+
         const detail =
           typeof result.detail === "string"
             ? result.detail
@@ -260,6 +285,38 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
             <p className="field-error" role="alert">
               {submitError}
             </p>
+          )}
+
+          {/* أسباب رفض المطالبة: تُعرض هنا ولا يُسمح بالانتقال لصفحة الملخص */}
+          {rejections.length > 0 && (
+            <section className="rejection-panel" role="alert" aria-labelledby="rejection-title">
+              <div className="rejection-head">
+                <span className="rejection-icon" aria-hidden="true">×</span>
+                <div>
+                  <strong id="rejection-title">
+                    This claim cannot be submitted
+                  </strong>
+                  <small>
+                    {rejections.length === 1
+                      ? "1 issue was found in the uploaded documents."
+                      : `${rejections.length} issues were found in the uploaded documents.`}
+                  </small>
+                </div>
+              </div>
+
+              <ol className="rejection-list">
+                {rejections.map((item, index) => (
+                  <li key={item.code + index}>
+                    <strong>{item.title}</strong>
+                    <p>{item.detail}</p>
+                  </li>
+                ))}
+              </ol>
+
+              <p className="rejection-footer">
+                Please correct the documents and upload them again. Nothing was saved.
+              </p>
+            </section>
           )}
 
           <div className="new-claim-actions">

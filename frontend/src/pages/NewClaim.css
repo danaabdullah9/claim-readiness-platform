@@ -346,3 +346,78 @@ input {
     width: 100%;
   }
 }
+
+/* ===================================================================
+   لوحة أسباب رفض المطالبة (تمنع الوصول لصفحة الملخص)
+   =================================================================== */
+
+.rejection-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #991b1b;
+  text-align: left;
+}
+
+.rejection-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rejection-icon {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rejection-head strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.rejection-head small {
+  display: block;
+  margin-top: 3px;
+  opacity: 0.8;
+  font-size: 0.82rem;
+}
+
+.rejection-list {
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+
+.rejection-list li {
+  padding: 8px 0;
+  border-top: 1px solid rgba(153, 27, 27, 0.15);
+}
+
+.rejection-list li strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.rejection-list li p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.rejection-footer {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(153, 27, 27, 0.15);
+  font-size: 0.83rem;
+  font-weight: 600;
+}

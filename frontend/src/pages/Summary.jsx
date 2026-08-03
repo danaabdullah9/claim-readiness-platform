@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import './Summary.css';
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "http://127.0.0.1:8001";
 
 function formatAmount(amount) {
   if (amount === null || amount === undefined) return '';
   return `${Number(amount).toFixed(2)} SAR`;
+}
+
+function Row({ label, value }) {
+  if (value === null || value === undefined || value === '') return null;
+  return (
+    <div className="summary-item">
+      <strong>{label}:</strong> <span>{value}</span>
+    </div>
+  );
 }
 
 const Summary = ({ claimId, onSubmit, onEdit }) => {
@@ -76,81 +85,121 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
     );
   }
 
+  // نتيجة تدقيق الـ AI: كانت تُحسب في الباك إند ثم تُرمى قبل الوصول للواجهة
+  const verification = claim.Verification;
+  const matchStatus = verification?.MatchStatus || 'success';
+  const isRejected = verification?.IsValid === false || matchStatus === 'rejected';
+  const isWarning = !isRejected && matchStatus === 'warning';
+
+  const tone = isRejected ? 'failed' : isWarning ? 'warning' : 'passed';
+  const title = isRejected
+    ? 'Verification failed — the invoice and the report do not match'
+    : isWarning
+    ? 'Verified with minor differences'
+    : 'Verified — the invoice matches the medical report';
+
   return (
     <div className="summary-container">
-      <h2>Review Your Claim Details</h2>
-      <p>Please verify your information before final submission.</p>
-
-      {/* Claim Readiness Widget Card */}
-      <div className="readiness-card">
-        <div className="readiness-progress-ring">
-          <span>100%</span>
-        </div>
-        <div className="readiness-info">
-          <span className="readiness-label">CLAIM READINESS</span>
-          <span className="readiness-status">Ready to submit</span>
-          <span className="readiness-subtext">0% requires attention</span>
-        </div>
+      <div className="summary-header">
+        <h2>Review Your Claim Details</h2>
+        <p>Please verify your information before final submission.</p>
       </div>
 
+      {verification && (
+        <div className={`verification-banner ${tone}`} role="status">
+          <div className="verification-head">
+            <span className="verification-icon" aria-hidden="true">
+              {isRejected ? '×' : isWarning ? '!' : '✓'}
+            </span>
+            <div>
+              <strong>{title}</strong>
+              {verification.Confidence != null && (
+                <small>AI confidence: {verification.Confidence}%</small>
+              )}
+            </div>
+          </div>
+
+          {verification.ValidationMessage && (
+            <p className="verification-message">{verification.ValidationMessage}</p>
+          )}
+
+          {verification.Discrepancies?.length > 0 && (
+            <ul className="discrepancy-list">
+              {verification.Discrepancies.map((item, index) => (
+                <li key={index}>
+                  <span className={`severity ${item.severity || 'low'}`}>
+                    {(item.severity || 'low') === 'high' ? 'HIGH' : 'LOW'}
+                  </span>
+                  <div>
+                    <strong>{item.field}</strong>
+                    <small>
+                      Invoice: {String(item.invoice_value)} · Report: {String(item.report_value)}
+                    </small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {verification.CoverageHint && (
+            <p className="coverage-hint">{verification.CoverageHint}</p>
+          )}
+        </div>
+      )}
+
       <div className="summary-card">
-        <div className="summary-item">
-          <strong>Claim ID:</strong> <span>{claim.ClaimID}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Claim Status:</strong> <span>{claim.ClaimStatus}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Patient Name:</strong> <span>{claim.PatientName}</span>
-        </div>
+        <p className="summary-group-title">Claim</p>
+        <Row label="Claim ID" value={claim.ClaimRef || `#${claim.ClaimID}`} />
+        {claim.ClaimRef && <Row label="Reference No" value={`#${claim.ClaimID}`} />}
+        <Row label="Claim Status" value={claim.ClaimStatus} />
+        <Row label="Claim Type" value={claim.ClaimType} />
+
+        <p className="summary-group-title">Member</p>
+        <Row label="Patient Name" value={claim.PatientName} />
         {claim.AccountHolderName && claim.AccountHolderName !== claim.PatientName && (
+          <Row label="Submitted By" value={claim.AccountHolderName} />
+        )}
+        <Row label="Member ID" value={claim.MemberId} />
+        <Row label="National ID" value={claim.NationalId} />
+        <Row label="Policy Number" value={claim.PolicyNumber} />
+        <Row label="Insurance Company" value={claim.InsuranceCompany} />
+
+        <p className="summary-group-title">Invoice</p>
+        <Row label="Invoice Number" value={claim.InvoiceNumber} />
+        <Row label="Invoice Date" value={claim.InvoiceDate} />
+        <Row label="Service Date" value={claim.ServiceDate} />
+        <Row label="Hospital Name" value={claim.HospitalName} />
+        <Row label="Service Provider" value={claim.ProviderName} />
+        <Row label="Provider Type" value={claim.ProviderType} />
+        <Row label="City" value={claim.City} />
+
+        <p className="summary-group-title">Medical</p>
+        <Row label="Diagnosis Code" value={claim.DiagnosisCode} />
+        <Row label="Diagnosis Description" value={claim.DiagnosisDescription} />
+        <Row label="Department" value={claim.Department} />
+        <Row label="Doctor Name" value={claim.DoctorName} />
+        {claim.ClinicalSummary && (
           <div className="summary-item">
-            <strong>Submitted By:</strong> <span>{claim.AccountHolderName}</span>
+            <strong>Clinical Summary:</strong>
+            <span className="clinical-text">{claim.ClinicalSummary}</span>
           </div>
         )}
-        <div className="summary-item">
-          <strong>National ID:</strong> <span>{claim.NationalId}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Invoice Number:</strong> <span>{claim.InvoiceNumber}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Invoice Date:</strong> <span>{claim.InvoiceDate}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Hospital Name:</strong> <span>{claim.HospitalName}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Provider Type:</strong> <span>{claim.ProviderType}</span>
-        </div>
-        {claim.City && (
-          <div className="summary-item">
-            <strong>City:</strong> <span>{claim.City}</span>
-          </div>
-        )}
-        <div className="summary-item">
-          <strong>Diagnosis Code:</strong> <span>{claim.DiagnosisCode}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Diagnosis Description:</strong> <span>{claim.DiagnosisDescription}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Doctor Name:</strong> <span>{claim.DoctorName}</span>
-        </div>
-        <div className="summary-item">
-          <strong>Clinical Summary:</strong> <span className="clinical-text">{claim.ClinicalSummary}</span>
-        </div>
+
         <div className="summary-item highlight">
           <strong>Total Amount:</strong> <span>{formatAmount(claim.TotalAmount)}</span>
         </div>
-        <div className="summary-item">
-          <strong>Submitted At:</strong> <span>{claim.CreatedAt}</span>
-        </div>
+
+        <Row label="Submitted At" value={claim.CreatedAt} />
+
         {claim.Documents && claim.Documents.length > 0 && (
           <div className="summary-item">
             <strong>Documents:</strong>
-            <span>
-              {claim.Documents.map((doc) => `${doc.DocumentType}: ${doc.FileName}`).join(', ')}
+            <span className="document-list">
+              {claim.Documents.map((doc) => (
+                <span className="document-chip" key={doc.DocumentID}>
+                  {doc.DocumentType}: {doc.FileName}
+                </span>
+              ))}
             </span>
           </div>
         )}
@@ -158,7 +207,9 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
 
       <div className="summary-actions">
         <button className="edit-btn" onClick={onEdit}>Back to Edit</button>
-        <button className="submit-btn" onClick={onSubmit}>Confirm & Submit</button>
+        <button className="submit-btn" onClick={onSubmit} disabled={isRejected}>
+          {isRejected ? 'Cannot Submit' : 'Confirm & Submit'}
+        </button>
       </div>
     </div>
   );
