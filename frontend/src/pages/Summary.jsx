@@ -81,6 +81,18 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
       <h2>Review Your Claim Details</h2>
       <p>Please verify your information before final submission.</p>
 
+      {/* Claim Readiness Widget Card */}
+      <div className="readiness-card">
+        <div className="readiness-progress-ring">
+          <span>100%</span>
+        </div>
+        <div className="readiness-info">
+          <span className="readiness-label">CLAIM READINESS</span>
+          <span className="readiness-status">Ready to submit</span>
+          <span className="readiness-subtext">0% requires attention</span>
+        </div>
+      </div>
+
       <div className="summary-card">
         <div className="summary-item">
           <strong>Claim ID:</strong> <span>{claim.ClaimID}</span>

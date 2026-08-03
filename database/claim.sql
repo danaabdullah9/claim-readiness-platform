@@ -188,4 +188,4 @@
 
 -- SELECT * FROM Documents;
 
-SELECT * FROM Employees;
+DELETE FROM Claims;

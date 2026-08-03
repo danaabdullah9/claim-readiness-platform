@@ -8,6 +8,58 @@
   font-family: Arial, sans-serif;
 }
 
+/* Claim Readiness Widget Styles */
+.readiness-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 15px 20px;
+  margin-top: 15px;
+  gap: 20px;
+}
+
+.readiness-progress-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 4px solid #3aafa9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.95em;
+  color: #3aafa9;
+  background-color: #f0fdf4;
+  flex-shrink: 0;
+}
+
+.readiness-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.readiness-label {
+  font-size: 0.75em;
+  font-weight: bold;
+  color: #777;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.readiness-status {
+  font-size: 1.05em;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.readiness-subtext {
+  font-size: 0.85em;
+  color: #666;
+}
+
 .summary-card {
   background: #fff;
   padding: 15px 20px;

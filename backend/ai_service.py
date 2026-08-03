@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # This loads the variables from your .env file
+import os
 import json
 import base64
 import fitz  # PyMuPDF
@@ -7,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from openai import OpenAI
+
+client = OpenAI(api_key="sk-proj-YOUR_ACTUAL_FULL_KEY_WITHOUT_THE_WORD_HERE")
 load_dotenv()
 
 app = FastAPI(title="Claim Readiness Platform - OpenAI Service")
