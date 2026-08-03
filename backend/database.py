@@ -19,6 +19,13 @@ _DATE_FORMATS = (
     "%B %d, %Y",
 )
 
+# لا يوجد عمود PatientName في جدول Claims (ممنوع تعديل السكيمة)، فنخزّن اسم
+# المريض المستخرج من الفاتورة كسطر أول داخل ClinicalSummary بصيغة ثابتة يسهل
+# فكّها لاحقًا. القيمة دي تمثّل "المريض المذكور في المستند"، وهي مختلفة عن
+# صاحب الحساب المسجّل دخوله (UserID) اللي قد يرفع مطالبة لأحد أفراد عائلته.
+_PATIENT_NAME_PREFIX = "[PatientName: "
+_PATIENT_NAME_SUFFIX = "]"
+
 
 class DuplicateClaimError(Exception):
     """المطالبة موجودة مسبقًا (InvoiceNumber مفهرس UNIQUE في قاعدة البيانات)."""
@@ -98,6 +105,27 @@ def _claim_status(analysis):
     if str(analysis.get("match_status", "")).lower() == "rejected":
         return "Rejected"
     return "Pending"
+
+
+def _pack_clinical_summary(patient_name, clinical_summary):
+    """يدمج اسم المريض المستخرج من المستند مع الملخص السريري في عمود واحد."""
+    body = clinical_summary or ""
+    if patient_name:
+        prefix = f"{_PATIENT_NAME_PREFIX}{patient_name}{_PATIENT_NAME_SUFFIX}"
+        return f"{prefix}\n{body}" if body else prefix
+    return body or None
+
+
+def _unpack_clinical_summary(raw_value):
+    """يرجع (PatientName, ClinicalSummary) من القيمة المخزّنة، أو (None, raw) لو ما فيه بادئة."""
+    if raw_value and raw_value.startswith(_PATIENT_NAME_PREFIX):
+        end = raw_value.find(_PATIENT_NAME_SUFFIX)
+        if end != -1:
+            patient_name = raw_value[len(_PATIENT_NAME_PREFIX):end]
+            remainder = raw_value[end + len(_PATIENT_NAME_SUFFIX):]
+            remainder = remainder[1:] if remainder.startswith("\n") else remainder
+            return patient_name, (remainder or None)
+    return None, raw_value
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +235,9 @@ def save_claim_from_analysis(analysis, invoice_filename, report_filename, user_i
         "InvoiceDate": _parse_date(extracted.get("InvoiceDate")),
         "DoctorName": _require(extracted.get("DoctorName"), "DoctorName"),
         "TotalAmount": _parse_amount(extracted.get("TotalAmount")),
-        "ClinicalSummary": _clean(clinical.get("ClinicalSummary")),
+        "ClinicalSummary": _pack_clinical_summary(
+            _clean(extracted.get("PatientName")), _clean(clinical.get("ClinicalSummary"))
+        ),
         "ClaimStatus": _claim_status(analysis),
     }
 
@@ -253,7 +283,7 @@ def get_claim_by_id(claim_id):
             SELECT
                 c.ClaimID, c.InvoiceNumber, c.InvoiceDate, c.DoctorName,
                 c.TotalAmount, c.ClinicalSummary, c.ClaimStatus, c.CreatedAt,
-                u.user_ID AS UserID, u.name AS PatientName,
+                u.user_ID AS UserID, u.name AS AccountHolderName,
                 u.identity_number AS NationalId,
                 p.ProviderName AS HospitalName, p.ProviderType, p.City,
                 d.DiagnosisCode, d.DiagnosisDescription
@@ -281,6 +311,13 @@ def get_claim_by_id(claim_id):
 
         result = dict(claim)
         result["TotalAmount"] = float(result["TotalAmount"])
+
+        # اسم المريض المذكور في الفاتورة قد يختلف عن صاحب الحساب المسجّل
+        # دخوله (مثلاً عضو يرفع مطالبة لأحد أفراد عائلته).
+        document_patient_name, clinical_summary = _unpack_clinical_summary(result["ClinicalSummary"])
+        result["PatientName"] = document_patient_name or result["AccountHolderName"]
+        result["ClinicalSummary"] = clinical_summary
+
         result["Documents"] = [dict(document) for document in documents]
         return result
     finally:

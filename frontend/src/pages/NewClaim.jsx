@@ -94,7 +94,7 @@ function UploadField({ id, label, file, onChange, onRemove }) {
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 // 1. Added onSubmitClaim to the props here
-function NewClaim({ onBack, onSubmitClaim }) {
+function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [selectedClaimType, setSelectedClaimType] = useState("");
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
@@ -136,6 +136,9 @@ function NewClaim({ onBack, onSubmitClaim }) {
       const formData = new FormData();
       formData.append("invoice", invoiceFile);
       formData.append("report", prescriptionFile);
+      if (userId) {
+        formData.append("user_id", userId);
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/analyze-claim`, {
         method: "POST",

@@ -8,42 +8,6 @@ function Login({ onLogin }) {
   const [error, setError] = useState("");
 
   async function handleSubmit(event) {
-  event.preventDefault();
-
-  if (!email || !password) {
-    setError("Please enter your email and password.");
-    return;
-  }
-
-  setError("");
-
-  try {
-    const response = await fetch("http://127.0.0.1:8000/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert(`Welcome ${data.user.name}!`);
-
-      console.log(data);
-    } else {
-      setError(data.detail);
-    }
-  } catch (err) {
-    setError("Cannot connect to backend.");
-    console.error(err);
-  }
-}
-  function handleSubmit(event) {
     event.preventDefault();
 
     if (!email || !password) {
@@ -52,10 +16,30 @@ function Login({ onLogin }) {
     }
 
     setError("");
-    console.log("Email:", email);
-    console.log("Password:", password);
 
-    onLogin();
+    try {
+      const response = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        onLogin(data.user);
+      } else {
+        setError(data.detail);
+      }
+    } catch (err) {
+      setError("Cannot connect to backend.");
+      console.error(err);
+    }
   }
 
   return (

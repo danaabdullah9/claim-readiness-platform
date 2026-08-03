@@ -12,6 +12,7 @@ function App() {
     window.location.hash === "#/employee" ? "employeeDashboard" : "welcome",
   );
   const [claimId, setClaimId] = useState(null);
+  const [userId, setUserId] = useState(null);
   // Employee dashboard navigation state. Existing page transitions remain unchanged.
   const [selectedEmployeeClaim, setSelectedEmployeeClaim] = useState(null);
 
@@ -37,12 +38,20 @@ function App() {
   // End employee dashboard navigation.
 
   if (currentPage === "login") {
-    return <Login onLogin={() => setCurrentPage("newClaim")} />;
+    return (
+      <Login
+        onLogin={(user) => {
+          setUserId(user.id);
+          setCurrentPage("newClaim");
+        }}
+      />
+    );
   }
 
   if (currentPage === "newClaim") {
     return (
       <NewClaim
+        userId={userId}
         onBack={() => setCurrentPage("login")}
         onSubmitClaim={(newClaimId) => {
           setClaimId(newClaimId);

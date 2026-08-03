@@ -91,6 +91,11 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
         <div className="summary-item">
           <strong>Patient Name:</strong> <span>{claim.PatientName}</span>
         </div>
+        {claim.AccountHolderName && claim.AccountHolderName !== claim.PatientName && (
+          <div className="summary-item">
+            <strong>Submitted By:</strong> <span>{claim.AccountHolderName}</span>
+          </div>
+        )}
         <div className="summary-item">
           <strong>National ID:</strong> <span>{claim.NationalId}</span>
         </div>
