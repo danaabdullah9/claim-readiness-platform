@@ -1,0 +1,72 @@
+.employee-corrections-pending {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff4d6;
+  color: #8a5a00;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.employee-correction-record + .employee-correction-record {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #dfe9eb;
+}
+
+.employee-correction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 14px;
+  color: #71858a;
+  font-size: 11px;
+}
+
+.employee-correction-comparison {
+  padding: 16px;
+  border: 1px solid #dfe9eb;
+  border-radius: 12px;
+  background: #fbfdfd;
+}
+
+.employee-correction-comparison + .employee-correction-comparison { margin-top: 12px; }
+.employee-correction-comparison h3 { margin: 0 0 12px; color: #17343d; font-size: 15px; }
+
+.employee-correction-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.employee-correction-status { padding: 5px 8px; border-radius: 999px; background: #fff4d6; color: #8a5a00; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.employee-correction-status-accepted { background: #e8f7f4; color: #176b5b; }
+.employee-correction-status-rejected { background: #fdecec; color: #9b3030; }
+
+.employee-correction-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.employee-correction-values > div { padding: 12px; border-radius: 9px; }
+.employee-correction-ai { background: #f0f4f5; }
+.employee-correction-user { background: #e8f7f4; border: 1px solid #b9e5dc; }
+.employee-correction-values span { color: #71858a; font-size: 10px; font-weight: 750; text-transform: uppercase; }
+.employee-correction-values p { margin: 5px 0 0; color: #29474f; overflow-wrap: anywhere; }
+.employee-correction-reason { margin: 12px 0 0; color: #547077; font-size: 12px; }
+.employee-corrections-error { margin: 0; color: #8a5a00; font-size: 12px; }
+
+.employee-correction-final { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding: 10px 12px; border-left: 3px solid #007c91; background: #edf5f6; color: #29474f; }
+.employee-correction-final span { color: #71858a; font-size: 9px; font-weight: 750; text-transform: uppercase; }
+.employee-correction-review-meta { display: grid; gap: 5px; margin-top: 12px; color: #547077; font-size: 11px; }
+.employee-correction-actions, .employee-correction-form-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.employee-correction-actions button, .employee-correction-form-actions button { padding: 8px 11px; border: 1px solid #b9cacc; border-radius: 7px; background: #fff; color: #29474f; cursor: pointer; font-size: 11px; font-weight: 750; }
+.employee-correction-review-form { margin-top: 14px; padding: 14px; border-radius: 9px; background: #f0f4f5; }
+.employee-correction-review-form > p { margin: 0; color: #29474f; font-size: 12px; }
+.employee-correction-review-form label { display: grid; gap: 6px; margin-top: 10px; color: #29474f; font-size: 11px; font-weight: 750; }
+.employee-correction-review-form select { padding: 9px; border: 1px solid #cedde0; border-radius: 8px; background: #fff; color: #29474f; }
+.employee-correction-review-error { margin: 10px 0 0; color: #9b3030; font-size: 11px; }
+.employee-correction-form-actions button[type="submit"] { border-color: #007c91; background: #007c91; color: #fff; }
+.employee-correction-form-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.employee-correction-approval-warning { margin: 8px 0 0; color: #8a5a00; font-size: 11px; font-weight: 750; }
+
+@media (max-width: 600px) {
+  .employee-correction-values { grid-template-columns: 1fr; }
+  .employee-correction-title-row { flex-direction: column; }
+}

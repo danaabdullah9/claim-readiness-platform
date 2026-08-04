@@ -67,7 +67,6 @@ input {
   font-size: 34px;
 }
 
-.new-claim-header h2,
 .section-heading h2 {
   margin: 0 0 8px;
   color: #17343d;
@@ -81,70 +80,6 @@ input {
   line-height: 1.6;
 }
 
-.claim-type-section {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.claim-type-section legend {
-  margin-bottom: 14px;
-  color: #334155;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.claim-type-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.claim-type-card {
-  display: flex;
-  align-items: center;
-  min-height: 90px;
-  padding: 18px;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  background: #fff;
-  color: #334155;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.2s,
-    background 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-
-.claim-type-card:hover {
-  border-color: #007c91;
-  transform: translateY(-1px);
-}
-
-.claim-type-card.selected {
-  border-color: #007c91;
-  background: #eaf7f8;
-  color: #006579;
-  box-shadow: 0 0 0 2px rgba(0, 124, 145, 0.12);
-}
-
-.claim-type-icon {
-  display: grid;
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  margin-right: 14px;
-  place-items: center;
-  border-radius: 10px;
-  background: #eef7f8;
-  color: #007c91;
-}
-
-.claim-type-icon svg,
 .upload-icon {
   width: 25px;
   fill: none;
@@ -155,7 +90,7 @@ input {
 }
 
 .documents-section {
-  margin-top: 36px;
+  margin-top: 0;
 }
 
 .section-heading {
@@ -310,7 +245,6 @@ input {
   cursor: not-allowed;
 }
 
-.claim-type-card:focus-visible,
 .back-button:focus-visible,
 .secondary-button:focus-visible,
 .continue-button:focus-visible,
@@ -331,10 +265,6 @@ input {
 
   .new-claim-header h1 {
     font-size: 29px;
-  }
-
-  .claim-type-grid {
-    grid-template-columns: 1fr;
   }
 
   .new-claim-actions {

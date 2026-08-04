@@ -1,0 +1,75 @@
+.corrections-panel {
+  margin-top: 18px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.corrections-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.corrections-heading h3,
+.corrections-heading p { margin: 0; }
+.corrections-heading p { margin-top: 4px; color: #64748b; font-size: .85rem; }
+
+.corrections-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #92400e;
+  background: #fef3c7;
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-incorrect-btn {
+  margin-top: 15px;
+  padding: 9px 14px;
+  border: 1px solid #3aafa9;
+  border-radius: 4px;
+  color: #237976;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.correction-instructions { color: #64748b; font-size: .85rem; }
+
+.correction-field {
+  padding: 14px 0;
+  border-top: 1px solid #eee;
+}
+
+.correction-field > label { display: block; margin-bottom: 8px; font-weight: 700; }
+.correction-field input,
+.correction-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 7px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font: inherit;
+}
+.correction-field textarea { resize: vertical; }
+
+.correction-value-block { padding: 9px 10px; border-radius: 4px; background: #f8fafc; }
+.correction-value-block small { display: block; color: #64748b; margin-bottom: 3px; }
+.correction-arrow { display: block; padding-top: 5px; text-align: center; color: #3aafa9; }
+
+.correction-summary { margin-top: 14px; border-top: 1px solid #eee; }
+.correction-summary-row { padding: 10px 0; border-bottom: 1px solid #eee; }
+.correction-summary-row > * { display: block; margin-top: 3px; }
+.correction-summary-row small { color: #64748b; }
+
+.correction-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+@media (max-width: 520px) {
+  .corrections-heading { flex-direction: column; }
+}

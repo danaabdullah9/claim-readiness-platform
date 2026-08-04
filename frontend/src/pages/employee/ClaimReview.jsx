@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import AIClaimSummary from "../../components/employee/AIClaimSummary";
 import AIVerificationChecklist from "../../components/employee/AIVerificationChecklist";
 import UploadedDocuments from "../../components/employee/UploadedDocuments";
 import EmployeeNotes from "../../components/employee/EmployeeNotes";
 import ClaimTimeline from "../../components/employee/ClaimTimeline";
 import ConfirmationDialog from "../../components/employee/ConfirmationDialog";
+import UserCorrectionsDisplay from "../../components/employee/UserCorrectionsDisplay";
 import "./EmployeeDashboard.css";
 
 const API_BASE_URL = "http://127.0.0.1:8001";
@@ -24,6 +25,8 @@ function ClaimReview({ claim: initialClaim, onBack }) {
   const [notice, setNotice] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [correctionReview, setCorrectionReview] = useState({ isLoading: true, hasUnresolved: false });
+  const handleCorrectionReviewState = useCallback((state) => setCorrectionReview(state), []);
 
   function handlePlaceholder(action) {
     setNotice(`${action} recorded for this review session only. No backend data was changed.`);
@@ -77,14 +80,15 @@ function ClaimReview({ claim: initialClaim, onBack }) {
           <div className="employee-review-primary">
             <section className="employee-review-card" aria-labelledby="member-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Policy holder</p><h2 id="member-info-title">Member Information</h2></div></div><DetailList items={[["Member Name", claim.member.name], ["Member ID", claim.member.memberId], ["National ID", claim.member.nationalId], ["Policy Number", claim.member.policyNumber], ["Insurance Company", claim.insuranceCompany], ["Submitted By", claim.submittedBy], ["Phone Number", claim.member.phone], ["Email", claim.member.email]]} /></section>
             <AIClaimSummary summary={claim.aiSummary} highlights={claim.highlights} confidence={claim.aiConfidence} />
-            <section className="employee-review-card" aria-labelledby="claim-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Submission details</p><h2 id="claim-info-title">Claim Information</h2></div></div><DetailList items={[["Claim ID", claim.id], ["Invoice Number", claim.invoiceNumber], ["Claim Type", claim.claimType], ["Service Type", claim.serviceType], ["Invoice Date", claim.invoiceDate], ["Hospital or Provider", claim.provider], ["Department", claim.department], ["Claim Amount", formatMoney(claim.amount, claim.currency)], ["Currency", claim.currency], ["Submission Date", claim.submissionDate], ["Current Status", claim.status], ["Priority", claim.priority]]} /></section>
             <UploadedDocuments documents={claim.documents} />
+            <UserCorrectionsDisplay claimId={claim.claimDbId} onReviewStateChange={handleCorrectionReviewState} />
+            <section className="employee-review-card" aria-labelledby="claim-info-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Submission details</p><h2 id="claim-info-title">Claim Information</h2></div></div><DetailList items={[["Claim ID", claim.id], ["Invoice Number", claim.invoiceNumber], ["Claim Type", claim.claimType], ["Service Type", claim.serviceType], ["Invoice Date", claim.invoiceDate], ["Hospital or Provider", claim.provider], ["Department", claim.department], ["Claim Amount", formatMoney(claim.amount, claim.currency)], ["Currency", claim.currency], ["Submission Date", claim.submissionDate], ["Current Status", claim.status], ["Priority", claim.priority]]} /></section>
             <AIVerificationChecklist items={claim.verification} />
           </div>
           <aside className="employee-review-sidebar">
             <EmployeeNotes value={notes} onChange={setNotes} />
             <ClaimTimeline currentStage={claim.currentStage} />
-            <section className="employee-review-card employee-actions-card" aria-labelledby="actions-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Decision support</p><h2 id="actions-title">Employee Actions</h2></div></div><button type="button" className="employee-action-primary" disabled={isSaving} onClick={() => setPendingAction({ label: "Approve", prompt: "approve this", tone: "primary" })}>{isSaving ? "Saving…" : "Approve"}</button><button type="button" className="employee-action-danger" disabled={isSaving} onClick={() => setPendingAction({ label: "Reject", prompt: "reject this", tone: "danger" })}>Reject</button><button type="button" onClick={() => setPendingAction({ label: "Request Missing Documents", prompt: "request missing documents for this", tone: "primary" })}>Request Missing Documents</button><button type="button" onClick={() => handlePlaceholder("Save Draft")}>Save Draft</button><button type="button" onClick={() => setPendingAction({ label: "Assign Claim", prompt: "assign this", tone: "primary" })}>Assign to Another Employee</button><p>Approve and Reject update the claim status in the database. The remaining actions stay in this session.</p></section>
+            <section className="employee-review-card employee-actions-card" aria-labelledby="actions-title"><div className="employee-section-heading"><div><p className="employee-eyebrow">Decision support</p><h2 id="actions-title">Employee Actions</h2></div></div><button type="button" className="employee-action-primary" disabled={isSaving || correctionReview.isLoading || correctionReview.hasUnresolved} onClick={() => setPendingAction({ label: "Approve", prompt: "approve this", tone: "primary" })}>{isSaving ? "Saving…" : "Approve"}</button>{correctionReview.hasUnresolved && <p className="employee-correction-approval-warning">Review all user corrections before approving this claim.</p>}<button type="button" className="employee-action-danger" disabled={isSaving} onClick={() => setPendingAction({ label: "Reject", prompt: "reject this", tone: "danger" })}>Reject</button><button type="button" onClick={() => setPendingAction({ label: "Request Missing Documents", prompt: "request missing documents for this", tone: "primary" })}>Request Missing Documents</button><button type="button" onClick={() => handlePlaceholder("Save Draft")}>Save Draft</button><button type="button" onClick={() => setPendingAction({ label: "Assign Claim", prompt: "assign this", tone: "primary" })}>Assign to Another Employee</button><p>Approve and Reject update the claim status in the database. The remaining actions stay in this session.</p></section>
           </aside>
         </div>
       </main>

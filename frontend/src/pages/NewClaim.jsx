@@ -1,41 +1,6 @@
 import { useRef, useState } from "react";
 import "./NewClaim.css";
 
-const claimTypes = [
-  {
-    value: "Inpatient and Surgery",
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 20v-9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9M4 16h16M8 9V5h4v4M10 3v4M8 5h4" />
-      </svg>
-    ),
-  },
-  {
-    value: "Dental",
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M8.5 3.5c1.4 0 2.2.8 3.5.8s2.1-.8 3.5-.8c2.2 0 4 1.9 4 4.4 0 2.2-1 3.8-1.5 5.7-.8 3-1.3 6.9-3.2 6.9-1.5 0-1.2-5.4-2.8-5.4s-1.3 5.4-2.8 5.4c-1.9 0-2.4-3.9-3.2-6.9-.5-1.9-1.5-3.5-1.5-5.7 0-2.5 1.8-4.4 4-4.4Z" />
-      </svg>
-    ),
-  },
-  {
-    value: "Optical",
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 13h2M19 13h2M9 13h6M9 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM23 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM5 9l2-4M19 9l-2-4" />
-      </svg>
-    ),
-  },
-  {
-    value: "Others / Outpatient",
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 8v8M8 12h8" />
-      </svg>
-    ),
-  },
-];
-
 function UploadField({ id, label, file, onChange, onRemove }) {
   const inputRef = useRef(null);
 
@@ -95,7 +60,6 @@ const API_BASE_URL = "http://127.0.0.1:8001";
 
 // 1. Added onSubmitClaim to the props here
 function NewClaim({ onBack, onSubmitClaim, userId }) {
-  const [selectedClaimType, setSelectedClaimType] = useState("");
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -104,16 +68,7 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [rejections, setRejections] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isComplete =
-    Boolean(selectedClaimType) && Boolean(invoiceFile) && Boolean(prescriptionFile);
-
-  function selectClaimType(claimType) {
-    setSelectedClaimType(claimType);
-    setHasInteracted(true);
-    setSuccessMessage("");
-    setRejections([]);
-    setSubmitError("");
-  }
+  const isComplete = Boolean(invoiceFile) && Boolean(prescriptionFile);
 
   function updateFile(setFile) {
     return (event) => {
@@ -206,36 +161,10 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
         <header className="new-claim-header">
           <p className="new-claim-label">Claims Management</p>
           <h1>New Claim</h1>
-          <h2>Claim Details</h2>
-          <p>Please select the claim type and upload the required documents.</p>
+          <p>Upload the required documents. Claim details will be extracted automatically.</p>
         </header>
 
         <form onSubmit={handleSubmit} noValidate>
-          <fieldset className="claim-type-section">
-            <legend>Claim type</legend>
-            <div className="claim-type-grid">
-              {claimTypes.map((claimType) => {
-                const isSelected = selectedClaimType === claimType.value;
-
-                return (
-                  <button
-                    key={claimType.value}
-                    type="button"
-                    className={`claim-type-card${isSelected ? " selected" : ""}`}
-                    aria-pressed={isSelected}
-                    onClick={() => selectClaimType(claimType.value)}
-                  >
-                    <span className="claim-type-icon">{claimType.icon}</span>
-                    <span>{claimType.value}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {hasInteracted && !selectedClaimType && (
-              <p className="field-error">Please select a claim type.</p>
-            )}
-          </fieldset>
-
           <section className="documents-section" aria-labelledby="documents-title">
             <div className="section-heading">
               <h2 id="documents-title">Documents</h2>
