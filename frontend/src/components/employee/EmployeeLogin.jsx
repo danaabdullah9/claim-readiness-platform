@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./EmployeeLogin.css";
 
 function EmployeeLogin({ employees, onLogin }) {
   const [employeeId, setEmployeeId] = useState("");
@@ -10,7 +11,7 @@ function EmployeeLogin({ employees, onLogin }) {
     const employee = employees.find((item) => item.id === normalizedId);
 
     if (!employee) {
-      setError("Employee ID not recognized. Please use one of the demo accounts below.");
+      setError(normalizedId ? "Employee ID not recognized." : "Please enter your Employee ID.");
       return;
     }
 
@@ -26,22 +27,20 @@ function EmployeeLogin({ employees, onLogin }) {
   return (
     <div className="employee-login-page">
       <main className="employee-login-card">
-        <div className="employee-login-brand"><span>care</span><strong>flow</strong></div>
-        <p className="employee-eyebrow">Claims operations</p>
+        <div className="welcome-brand employee-login-brand" aria-label="Care Flow"><span>care</span><strong>flow</strong></div>
         <h1>Employee Login</h1>
-        <p className="employee-login-intro">Enter your employee ID to access your assigned claims.</p>
         <form onSubmit={handleSubmit} noValidate>
-          <label htmlFor="employee-id">Employee ID</label>
-          <input id="employee-id" type="text" value={employeeId} onChange={(event) => { setEmployeeId(event.target.value); setError(""); }} placeholder="e.g. EMP1001" autoComplete="off" autoFocus aria-describedby={error ? "employee-login-error" : undefined} />
+          <label className="employee-login-field-label" htmlFor="employee-id">Employee ID</label>
+          <input id="employee-id" type="text" value={employeeId} onChange={(event) => { setEmployeeId(event.target.value); setError(""); }} placeholder="Enter your Employee ID" autoComplete="off" autoFocus aria-describedby={error ? "employee-login-error" : undefined} />
           {error && <p className="employee-login-error" id="employee-login-error" role="alert">{error}</p>}
           <button type="submit">Continue to Dashboard</button>
-          <button type="button" className="employee-back-to-welcome" onClick={handleBackToWelcome}>← Back to Welcome</button>
         </form>
-        <section className="employee-demo-accounts" aria-labelledby="demo-accounts-title">
-          <div><h2 id="demo-accounts-title">Demo accounts</h2><span>No password required</span></div>
-          <ul>{employees.map((employee) => <li key={employee.id}><button type="button" onClick={() => setEmployeeId(employee.id)}><strong>{employee.id}</strong><span>{employee.name}</span><small>{employee.role}</small></button></li>)}</ul>
+        <section className="employee-access-card" aria-labelledby="employee-access-title">
+          <h2 id="employee-access-title">Employee Access</h2>
+          <p>Enter your assigned Employee ID to access your dashboard.</p>
+          <p>If you do not know your Employee ID, please contact your administrator.</p>
         </section>
-        <p className="employee-demo-note">Demo access only · No real authentication is performed</p>
+        <a className="employee-back-to-welcome" href="" onClick={handleBackToWelcome}>← Back</a>
       </main>
     </div>
   );

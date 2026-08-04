@@ -46,5 +46,19 @@
         "reason": null
       }
     ]
+  },
+  "21": {
+    "version": 1,
+    "claimId": 21,
+    "status": "pending",
+    "submittedAt": "2026-08-04T18:24:13.190600+00:00",
+    "corrections": [
+      {
+        "field": "DiagnosisCode",
+        "originalValue": "K02.1",
+        "correctedValue": "K02.13",
+        "reason": null
+      }
+    ]
   }
 }

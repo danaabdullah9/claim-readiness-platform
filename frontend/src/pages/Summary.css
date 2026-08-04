@@ -1,11 +1,11 @@
 .summary-container {
-  max-width: 1040px;
+  max-width: 1100px;
   margin: 30px auto;
-  padding: 20px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  font-family: Arial, sans-serif;
+  padding: 28px;
+  background: #f4f8f9;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(23, 52, 61, 0.1);
+  font-family: Inter, Arial, sans-serif;
 }
 
 /* Claim Readiness Widget Styles */
@@ -68,10 +68,11 @@
 }
 
 .summary-section {
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 22px;
+  border: 1px solid #dce7e9;
+  border-radius: 14px;
   background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 52, 61, 0.05);
   text-align: left;
 }
 
@@ -123,6 +124,10 @@
 
 .summary-item textarea { resize: vertical; }
 
+.summary-item textarea[aria-label="Clinical Summary"] {
+  min-height: 140px;
+}
+
 .edited-badge {
   padding: 2px 7px;
   border-radius: 999px;
@@ -151,7 +156,12 @@
 .summary-actions {
   display: flex;
   justify-content: space-between;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid #dce7e9;
+  border-radius: 14px;
+  background: #fff;
 }
 
 .edit-btn, .submit-btn {
@@ -182,7 +192,84 @@
    =================================================================== */
 
 .summary-header {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.summary-brand {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.summary-header h2 {
+  margin: 0 0 9px;
+  color: #17343d;
+  font-size: clamp(30px, 4vw, 40px);
+  letter-spacing: -1px;
+}
+
+.summary-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.summary-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 24px;
+  padding: 18px 20px;
+  border: 1px solid #dce7e9;
+  border-radius: 14px;
+  background: #fff;
+  list-style: none;
+}
+
+.summary-progress li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #8a9a9e;
+  font-size: 12px;
+}
+
+.summary-progress li + li::before {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 24px;
+  background: #dce7e9;
+  content: "";
+}
+
+.summary-progress li > span {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid #cbdcdf;
+  border-radius: 50%;
+  background: #fff;
+  font-weight: 800;
+}
+
+.summary-progress li.completed,
+.summary-progress li.active {
+  color: #17343d;
+}
+
+.summary-progress li.completed > span {
+  border-color: #62aebb;
+  background: #e6f4f5;
+  color: #007c91;
+}
+
+.summary-progress li.active > span {
+  border-color: #007c91;
+  background: #007c91;
+  color: #fff;
 }
 
 .verification-banner {
@@ -234,6 +321,11 @@
 .verification-banner.failed  .verification-icon { background: #dc2626; }
 
 .verification-message {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+
+.verification-summary {
   margin: 10px 0 0;
   font-size: 0.9rem;
 }
@@ -317,6 +409,28 @@
   color: #475569;
 }
 
+.edited-fields-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 13px 16px;
+  border: 1px solid #b9d3d7;
+  border-radius: 10px;
+  background: #f0f9fa;
+  color: #17343d;
+}
+
+.edited-fields-summary strong {
+  color: #007c91;
+}
+
+.edited-fields-summary span {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .submit-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -328,7 +442,10 @@
 
 @media (max-width: 560px) {
   .summary-container { margin: 15px auto; padding: 14px; }
+  .summary-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; }
+  .summary-progress li:nth-child(3)::before { display: none; }
   .summary-grid { grid-template-columns: 1fr; }
+  .edited-fields-summary { align-items: flex-start; flex-direction: column; gap: 4px; }
   .summary-actions { flex-direction: column; gap: 10px; }
   .summary-actions button { width: 100%; }
 }

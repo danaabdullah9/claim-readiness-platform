@@ -19,10 +19,10 @@ function UploadField({ id, label, file, onChange, onRemove }) {
         {file ? (
           <>
             <p className="file-name">{file.name}</p>
-            <p className="upload-help">Your document is ready.</p>
+            <p className="upload-help upload-complete">Uploaded successfully</p>
             <div className="file-actions">
               <button type="button" onClick={() => inputRef.current?.click()}>
-                Replace
+                Replace File
               </button>
               <button type="button" onClick={onRemove}>
                 Remove
@@ -69,6 +69,7 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isComplete = Boolean(invoiceFile) && Boolean(prescriptionFile);
+  const uploadedCount = Number(Boolean(invoiceFile)) + Number(Boolean(prescriptionFile));
 
   function updateFile(setFile) {
     return (event) => {
@@ -159,49 +160,72 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
         </button>
 
         <header className="new-claim-header">
-          <p className="new-claim-label">Claims Management</p>
-          <h1>New Claim</h1>
-          <p>Upload the required documents. Claim details will be extracted automatically.</p>
+          <p className="new-claim-greeting">Welcome back</p>
+          <h1>Start a New Claim</h1>
+          <p>Let's prepare your reimbursement claim.</p>
         </header>
+
+        <ol className="claim-progress" aria-label="Claim submission progress">
+          {[
+            "Upload Documents",
+            "AI Review",
+            "Verify Information",
+            "Submit Claim",
+          ].map((step, index) => (
+            <li key={step} className={index === 0 ? "active" : ""} aria-current={index === 0 ? "step" : undefined}>
+              <span>{index + 1}</span>
+              <strong>{step}</strong>
+            </li>
+          ))}
+        </ol>
 
         <form onSubmit={handleSubmit} noValidate>
           <section className="documents-section" aria-labelledby="documents-title">
             <div className="section-heading">
-              <h2 id="documents-title">Documents</h2>
-              <p>Add one file for each required document.</p>
+              <div>
+                <h2 id="documents-title">Documents</h2>
+                <span className="required-count">2 Required</span>
+              </div>
+              <p>{uploadedCount} / 2 Uploaded</p>
             </div>
 
-            <UploadField
-              id="invoice"
-              label="Invoice"
-              file={invoiceFile}
-              onChange={updateFile(setInvoiceFile)}
-              onRemove={() => {
-                setInvoiceFile(null);
-                setHasInteracted(true);
-                setSuccessMessage("");
-              }}
-            />
-            {hasInteracted && !invoiceFile && (
-              <p className="field-error">Please upload an invoice.</p>
-            )}
+            <div className="document-grid">
+              <div className="document-card">
+                <UploadField
+                  id="invoice"
+                  label="Invoice"
+                  file={invoiceFile}
+                  onChange={updateFile(setInvoiceFile)}
+                  onRemove={() => {
+                    setInvoiceFile(null);
+                    setHasInteracted(true);
+                    setSuccessMessage("");
+                  }}
+                />
+                {hasInteracted && !invoiceFile && (
+                  <p className="field-error">Please upload an invoice.</p>
+                )}
+              </div>
 
-            <UploadField
-              id="medical-prescription"
-              label="Medical Prescription"
-              file={prescriptionFile}
-              onChange={updateFile(setPrescriptionFile)}
-              onRemove={() => {
-                setPrescriptionFile(null);
-                setHasInteracted(true);
-                setSuccessMessage("");
-              }}
-            />
-            {hasInteracted && !prescriptionFile && (
-              <p className="field-error">
-                Please upload a medical prescription.
-              </p>
-            )}
+              <div className="document-card">
+                <UploadField
+                  id="medical-prescription"
+                  label="Medical Prescription"
+                  file={prescriptionFile}
+                  onChange={updateFile(setPrescriptionFile)}
+                  onRemove={() => {
+                    setPrescriptionFile(null);
+                    setHasInteracted(true);
+                    setSuccessMessage("");
+                  }}
+                />
+                {hasInteracted && !prescriptionFile && (
+                  <p className="field-error">
+                    Please upload a medical prescription.
+                  </p>
+                )}
+              </div>
+            </div>
           </section>
 
           {successMessage && (
@@ -249,9 +273,9 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
           )}
 
           <div className="new-claim-actions">
-            <button type="button" className="secondary-button" onClick={onBack}>
-              Back
-            </button>
+            {!isComplete && (
+              <p>Upload all required documents to continue.</p>
+            )}
             <button
               type="submit"
               className="continue-button"

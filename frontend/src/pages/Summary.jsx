@@ -197,12 +197,34 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
     ? 'Verified with minor differences'
     : 'Verified — the invoice matches the medical report';
 
+  const currentValues = isEditing ? draftValues : displayValues;
+  const editedFieldCount = [...EDITABLE_FIELDS].filter(
+    (field) => String(currentValues[field]) !== String(claim[field] ?? ''),
+  ).length;
+
   return (
     <div className="summary-container">
       <div className="summary-header">
+        <div className="welcome-brand summary-brand" aria-label="Care Flow">
+          <span>care</span><strong>flow</strong>
+        </div>
         <h2>Review Your Claim Details</h2>
         <p>Please verify your information before final submission.</p>
       </div>
+
+      <ol className="summary-progress" aria-label="Claim submission progress">
+        {[
+          ["Upload Documents", "completed"],
+          ["AI Review", "completed"],
+          ["Verify Information", "active"],
+          ["Submit Claim", ""],
+        ].map(([step, status], index) => (
+          <li key={step} className={status} aria-current={status === "active" ? "step" : undefined}>
+            <span>{status === "completed" ? "✓" : index + 1}</span>
+            <strong>{step}</strong>
+          </li>
+        ))}
+      </ol>
 
       {verification && (
         <div className={`verification-banner ${tone}`} role="status">
@@ -211,12 +233,16 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
               {isRejected ? '×' : isWarning ? '!' : '✓'}
             </span>
             <div>
-              <strong>{title}</strong>
+              <strong>{!isRejected && !isWarning ? 'AI Validation Passed' : title}</strong>
               {verification.Confidence != null && (
                 <small>AI confidence: {verification.Confidence}%</small>
               )}
             </div>
           </div>
+
+          {!isRejected && !isWarning && (
+            <p className="verification-summary">The uploaded documents appear consistent.</p>
+          )}
 
           {verification.ValidationMessage && (
             <p className="verification-message">{verification.ValidationMessage}</p>
@@ -300,6 +326,13 @@ const Summary = ({ claimId, onSubmit, onEdit }) => {
           </Section>
         )}
       </div>
+
+      {editedFieldCount > 0 && (
+        <div className="edited-fields-summary" role="status">
+          <strong>{editedFieldCount} {editedFieldCount === 1 ? "field" : "fields"} edited</strong>
+          <span>Changes will be sent for employee review.</span>
+        </div>
+      )}
 
       {saveMessage && <p className="summary-success" role="status">{saveMessage}</p>}
       {saveError && <p className="field-error summary-save-error" role="alert">{saveError}</p>}
