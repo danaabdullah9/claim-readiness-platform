@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import SubmissionSuccess from "./SubmissionSuccess";
 import "./NewClaim.css";
 
 function UploadField({ id, label, file, onChange, onRemove }) {
@@ -58,7 +59,6 @@ function UploadField({ id, label, file, onChange, onRemove }) {
 
 const API_BASE_URL = "http://127.0.0.1:8001";
 
-// 1. Added onSubmitClaim to the props here
 function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
@@ -67,6 +67,9 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
   const [submitError, setSubmitError] = useState("");
   const [rejections, setRejections] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Added state to control the success popup overlay
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const isComplete = Boolean(invoiceFile) && Boolean(prescriptionFile);
   const uploadedCount = Number(Boolean(invoiceFile)) + Number(Boolean(prescriptionFile));
@@ -122,7 +125,6 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
       const result = await response.json();
 
       if (!response.ok) {
-        // 422 مع قائمة أسباب = المطالبة رُفضت بقواعد القبول، فنعرضها ولا ننتقل
         const reasons = result.detail?.rejections;
         if (Array.isArray(reasons) && reasons.length > 0) {
           setRejections(reasons);
@@ -138,7 +140,9 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
 
       setSuccessMessage("Documents added successfully.");
 
-      // 2. Trigger the summary page transition using the claim saved by the backend
+      // Trigger the success modal popup instead of immediately transitioning away
+      setIsSubmitted(true);
+
       if (onSubmitClaim) {
         onSubmitClaim(result.claim_id);
       }
@@ -240,7 +244,6 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
             </p>
           )}
 
-          {/* أسباب رفض المطالبة: تُعرض هنا ولا يُسمح بالانتقال لصفحة الملخص */}
           {rejections.length > 0 && (
             <section className="rejection-panel" role="alert" aria-labelledby="rejection-title">
               <div className="rejection-head">
@@ -285,6 +288,11 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
             </button>
           </div>
         </form>
+
+        {/* Display the Success Popup Modal once submission finishes successfully */}
+        {isSubmitted && (
+          <SubmissionSuccess onClose={() => window.location.reload()} />
+        )}
       </main>
     </div>
   );

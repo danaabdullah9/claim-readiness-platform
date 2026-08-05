@@ -6,6 +6,7 @@ import Summary from "./pages/Summary";
 // Employee dashboard navigation (isolated from the existing member claim flow).
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import ClaimReview from "./pages/employee/ClaimReview";
+import SubmissionSuccess from "./pages/SubmissionSuccess";
 
 function App() {
   const [currentPage, setCurrentPage] = useState(
@@ -15,6 +16,9 @@ function App() {
   const [userId, setUserId] = useState(null);
   // Employee dashboard navigation state. Existing page transitions remain unchanged.
   const [selectedEmployeeClaim, setSelectedEmployeeClaim] = useState(null);
+
+  // State to control your custom success popup modal
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   if (currentPage === "employeeDashboard") {
     return (
@@ -63,14 +67,26 @@ function App() {
 
   if (currentPage === "summary") {
     return (
-      <Summary
-        claimId={claimId}
-        onEdit={() => setCurrentPage("newClaim")}
-        onSubmit={() => {
-          alert("Claim submitted successfully!");
-          setCurrentPage("welcome");
-        }}
-      />
+      <div style={{ position: "relative" }}>
+        <Summary
+          claimId={claimId}
+          onEdit={() => setCurrentPage("newClaim")}
+          onSubmit={() => {
+            // Trigger your custom success popup modal instead of an alert
+            setIsSubmitted(true);
+          }}
+        />
+
+        {/* Custom Submission Success Modal Popup */}
+        {isSubmitted && (
+          <SubmissionSuccess
+            onClose={() => {
+              setIsSubmitted(false);
+              setCurrentPage("welcome");
+            }}
+          />
+        )}
+      </div>
     );
   }
 
