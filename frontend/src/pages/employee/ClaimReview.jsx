@@ -13,7 +13,7 @@ const API_BASE_URL = "http://127.0.0.1:8001";
 const formatMoney = (amount, currency) => new Intl.NumberFormat("en-SA", { style: "currency", currency }).format(amount);
 
 // Approve / Reject تكتب فعليًا في عمود ClaimStatus بدل ما تبقى في المتصفح
-const BACKEND_ACTIONS = { Approve: "Approved", Reject: "Rejected" };
+const BACKEND_ACTIONS = { Approve: "Approved", Reject: "Rejected", "Request Missing Documents": "Action Required" };
 
 function DetailList({ items }) {
   return <dl className="employee-detail-list">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>;
@@ -56,7 +56,7 @@ function ClaimReview({ claim: initialClaim, onBack }) {
       if (!response.ok) throw new Error(result.detail || "Could not update the claim.");
 
       setClaim({ ...result.data, assignedTo: claim.assignedTo });
-      setNotice(`Claim ${claim.id} was ${backendStatus.toLowerCase()} and saved to the database.`);
+      setNotice(`Claim ${claim.id} was updated to ${backendStatus} and the customer was notified.`);
     } catch (err) {
       setNotice(err.message || "Cannot connect to backend.");
     } finally {
