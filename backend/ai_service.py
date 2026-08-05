@@ -206,7 +206,7 @@ async def analyze_claim(invoice: UploadFile, report: UploadFile):
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     try:
-        print(f"📄 Processing Claim - Invoice: {invoice.filename}, Report: {report.filename}")
+        print(f"Processing claim - Invoice: {invoice.filename}, Report: {report.filename}")
 
         invoice_contents = await invoice.read()
         report_contents = await report.read()
@@ -246,7 +246,7 @@ async def analyze_claim(invoice: UploadFile, report: UploadFile):
         )
 
         result_content = json.loads(response.choices[0].message.content)
-        print("✅ Enhanced Pipeline Executed Successfully:", result_content)
+        print("Enhanced claim analysis pipeline completed successfully.")
 
         return {
             "status": "success",
@@ -261,5 +261,5 @@ async def analyze_claim(invoice: UploadFile, report: UploadFile):
         # بدون هذا السطر كل أخطاء 400 المقصودة فوق تنقلب لـ 500 برسالة غامضة
         raise
     except Exception as e:
-        print(f"❌ OpenAI Error: {str(e)}")
+        print(f"OpenAI error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
