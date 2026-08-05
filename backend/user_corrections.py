@@ -77,14 +77,21 @@ def _records_for_claim(stored_claim):
 
 
 def has_unresolved_corrections(claim_id):
+    """يتفق مع get_user_corrections: يفحص آخر مجموعة تصحيحات مُرسلة بس.
+
+    التصحيحات القديمة اللي انسحبت بإرسال مجموعة جديدة على نفس المطالبة ما
+    تعتبر عالقة للأبد لو آخر مجموعة انراجعت.
+    """
     with STORE_LOCK:
-        stored_claim = _read_store().get(str(claim_id))
-        for record in _records_for_claim(stored_claim):
-            for correction in record.get("corrections", []):
-                if correction.get("review_status", "pending") in {
-                    "pending", "additional_information_required"
-                }:
-                    return True
+        records = _records_for_claim(_read_store().get(str(claim_id)))
+        if not records:
+            return False
+        latest_record = records[-1]
+        for correction in latest_record.get("corrections", []):
+            if correction.get("review_status", "pending") in {
+                "pending", "additional_information_required"
+            }:
+                return True
     return False
 
 
