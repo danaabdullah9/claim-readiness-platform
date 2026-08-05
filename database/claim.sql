@@ -1,9 +1,46 @@
+
+
+-- CREATING TABLES
+
+
+
+
+-- new
+
 -- CREATE TABLE Providers (
 --     ProviderID INTEGER PRIMARY KEY AUTOINCREMENT,
+--     ProviderCode TEXT UNIQUE,
 --     ProviderName TEXT NOT NULL,
---     ProviderType TEXT NOT NULL,
+--     ProviderType TEXT,
+--     ClinicType TEXT,
+--     Department TEXT,
 --     City TEXT,
 --     PhoneNumber TEXT
+-- );
+
+
+
+
+-- CREATE TABLE Users (
+--     user_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+--     Name TEXT NOT NULL,
+--     NationalID TEXT NOT NULL UNIQUE,
+--     Email TEXT NOT NULL UNIQUE,
+--     Password TEXT NOT NULL,
+--     MemberID TEXT NOT NULL UNIQUE,
+--     File TEXT NOT NULL,
+--     Gender TEXT NOT NULL,
+--     Age INTEGER NOT NULL,
+--     Nationality TEXT NOT NULL,
+--     IBAN TEXT NOT NULL UNIQUE
+-- );
+
+
+-- CREATE TABLE Employees (
+--     EmployeeID INTEGER PRIMARY KEY,
+--     FullName TEXT NOT NULL,
+--     IsActive INTEGER NOT NULL DEFAULT 1
+--         CHECK (IsActive IN (0,1))
 -- );
 
 
@@ -14,30 +51,72 @@
 -- );
 
 
+-- CREATE TABLE Doctors (
+--     DoctorID INTEGER PRIMARY KEY AUTOINCREMENT,
+--     DoctorName TEXT NOT NULL,
+--     Specialty TEXT,
+--     ProviderID INTEGER NOT NULL,
+
+--     FOREIGN KEY (ProviderID)
+--         REFERENCES Providers(ProviderID)
+-- );
+
+
+
+
+
 -- CREATE TABLE Claims (
 --     ClaimID INTEGER PRIMARY KEY AUTOINCREMENT,
 
+--     ClaimNumber TEXT NOT NULL UNIQUE,
+
 --     UserID INTEGER NOT NULL,
 --     ProviderID INTEGER NOT NULL,
+--     DoctorID INTEGER NOT NULL,
 --     DiagnosisID INTEGER NOT NULL,
+
+--     DoctorName TEXT,
+
+--     ClaimType TEXT NOT NULL,
+--     EpisodeNumber TEXT,
+
+--     InsuranceCompany TEXT NOT NULL,
+--     CompanyVAT TEXT,
 
 --     InvoiceNumber TEXT NOT NULL UNIQUE,
 --     InvoiceDate DATE NOT NULL,
 
---     DoctorName TEXT NOT NULL,
+--     ProcedureCode TEXT,
+--     ServiceDescription TEXT,
 
+--     Quantity INTEGER NOT NULL DEFAULT 1,
+--     UnitPrice DECIMAL(10,2),
+--     VAT DECIMAL(10,2),
 --     TotalAmount DECIMAL(10,2) NOT NULL,
 
 --     ClinicalSummary TEXT,
+--     ChiefComplaint TEXT,
+--     MedicalHistory TEXT,
+--     Examination TEXT,
+--     TreatmentPlan TEXT,
+--     Medications TEXT,
 
 --     ClaimStatus TEXT NOT NULL DEFAULT 'Pending'
 --         CHECK (ClaimStatus IN ('Pending', 'Approved', 'Rejected')),
 
 --     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
 
---     FOREIGN KEY (UserID) REFERENCES Users(UserID),
---     FOREIGN KEY (ProviderID) REFERENCES Providers(ProviderID),
---     FOREIGN KEY (DiagnosisID) REFERENCES Diagnoses(DiagnosisID)
+--     FOREIGN KEY (UserID)
+--         REFERENCES Users(user_ID),
+
+--     FOREIGN KEY (ProviderID)
+--         REFERENCES Providers(ProviderID),
+
+--     FOREIGN KEY (DoctorID)
+--         REFERENCES Doctors(DoctorID),
+
+--     FOREIGN KEY (DiagnosisID)
+--         REFERENCES Diagnoses(DiagnosisID)
 -- );
 
 
@@ -47,133 +126,78 @@
 --     ClaimID INTEGER NOT NULL,
 
 --     DocumentType TEXT NOT NULL
---         CHECK (DocumentType IN ('Invoice', 'Medical Report', 'Prescription', 'Other')),
+--         CHECK (DocumentType IN
+--         ('Invoice',
+--          'Medical Report',
+--          'Prescription',
+--          'Other')),
 
 --     FileName TEXT NOT NULL,
 
 --     UploadDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 
---     FOREIGN KEY (ClaimID) REFERENCES Claims(ClaimID)
--- );
-
-
-
-
--- INSERT INTO Users (
---     Name,
---     Email,
---     PhoneNumber,
---     IdentityNumber,
---     Password
--- )
--- VALUES (
---     'Ahmed Ali',
---     'ahmed.ali@example.com',
---     '0501234567',
---     '1023456789',
---     'password123'
--- );
-
-
--- INSERT INTO Providers (
---     ProviderName,
---     ProviderType,
---     City,
---     PhoneNumber
--- )
--- VALUES (
---     'King Faisal Hospital',
---     'Hospital',
---     'Jeddah',
---     '0126543210'
--- );
-
-
--- INSERT INTO Diagnoses (
---     DiagnosisCode,
---     DiagnosisDescription
--- )
--- VALUES (
---     'J06.9',
---     'Acute upper respiratory infection'
--- );
-
-
--- INSERT INTO Claims (
---     UserID,
---     ProviderID,
---     DiagnosisID,
---     InvoiceNumber,
---     InvoiceDate,
---     DoctorName,
---     TotalAmount,
---     ClinicalSummary,
---     ClaimStatus
--- )
--- VALUES (
---     1,
---     1,
---     1,
---     'INV-2026-0001',
---     '2026-07-28',
---     'Dr. Sarah Hassan',
---     850.00,
---     'Patient complained of fever, sore throat, and cough. Prescribed antibiotics and advised to rest.',
---     'Pending'
--- );
-
-
--- INSERT INTO Documents (
---     ClaimID,
---     DocumentType,
---     FileName
--- )
--- VALUES (
---     1,
---     'Invoice',
---     'invoice_0001.pdf'
+--     FOREIGN KEY (ClaimID)
+--         REFERENCES Claims(ClaimID)
 -- );
 
 
 
 
 
--- CREATE TABLE Employees (
---     EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
---     FullName TEXT NOT NULL,
---     Email TEXT NOT NULL UNIQUE,
---     Password TEXT NOT NULL,
---     IsActive INTEGER NOT NULL DEFAULT 1
---         CHECK (IsActive IN (0,1))
--- );
+
+-- INSERTING INTO TABLES
 
 
--- INSERT INTO Employees (
---     FullName,
---     Email,
---     Password,
---     IsActive
--- )
--- VALUES (
---     'Sarah Ahmed',
---     'sarah.ahmed@insurance.com',
---     'password123',
---     1
--- );
 
--- INSERT INTO Employees (
---     FullName,
---     Email,
---     Password,
---     IsActive
--- )
--- VALUES (
---     'Mohammed Alharbi',
---     'mohammed.alharbi@insurance.com',
---     'password456',
---     1
--- );
 
+
+-- INSERT INTO Employees (EmployeeID, FullName, IsActive)
+-- VALUES
+-- (1001, 'Noura Alharbi', 1),
+-- (1002, 'Mohammed Alotaibi', 1),
+-- (1003, 'Sara Alshammari', 1);
+
+
+
+-- INSERT INTO Users
+-- (Name, NationalID, Email, Password, MemberID, File, Gender, Age, Nationality, IBAN)
+-- VALUES
+-- ('Ahmed Ali',
+--  '1120400591',
+--  'ahmed.ali@example.com',
+--  'Ahmed123',
+--  'BP12345',
+--  '30026571',
+--  'Male',
+--  34,
+--  'Saudi',
+--  'SA0380000000608010167519'),
+
+-- ('Fatimah Nasser',
+--  '1099230145',
+--  'fatimah.nasser@example.com',
+--  'Fatimah123',
+--  'BP22981',
+--  '30041882',
+--  'Female',
+--  29,
+--  'Saudi',
+--  'SA4420000001234567890123'),
+
+-- ('Sara Mahmoud',
+--  '2455677812',
+--  'sara.mahmoud@example.com',
+--  'Sara123',
+--  'BP61203',
+--  '30084011',
+--  'Female',
+--  31,
+--  'Jordanian',
+--  'SA6820000009876543210987');
+
+
+
+--  VIEWING TABLES
 
 
 
@@ -188,4 +212,16 @@
 
 -- SELECT * FROM Documents;
 
-DELETE FROM Claims;
+-- SELECT * FROM Employees;
+
+-- SELECT * FROM Doctors;
+ 
+
+ 
+
+
+
+
+
+
+

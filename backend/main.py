@@ -68,8 +68,9 @@ async def login(credentials: LoginRequest):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT * FROM USERS
-        WHERE email = ? AND password = ?
+        SELECT *
+        FROM Users
+        WHERE Email = ? AND Password = ?
     """, (credentials.email, credentials.password))
 
     user = cursor.fetchone()
@@ -81,8 +82,8 @@ async def login(credentials: LoginRequest):
             "message": "Login successful",
             "user": {
                 "id": user["user_ID"],
-                "name": user["name"],
-                "email": user["email"]
+                "name": user["Name"],
+                "email": user["Email"]
             }
         }
 
