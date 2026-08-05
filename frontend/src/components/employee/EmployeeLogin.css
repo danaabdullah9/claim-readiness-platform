@@ -1,0 +1,120 @@
+.employee-login-page {
+  background: linear-gradient(135deg, rgba(244, 250, 251, 0.97), rgba(222, 240, 243, 0.96));
+}
+
+.employee-login-page .employee-login-card {
+  width: min(490px, 100%);
+  padding: 44px 40px 38px;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-brand {
+  margin: 0 0 24px;
+  color: #007c91;
+  font-size: 30px;
+  letter-spacing: -.8px;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-brand strong { color: #17343d; }
+
+.employee-login-page .employee-login-card h1 {
+  margin: 0 0 30px;
+  color: #17343d;
+  font-size: 30px;
+  letter-spacing: -.7px;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-card form {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-card form label {
+  color: #39575e;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.employee-login-page .employee-login-card form input {
+  min-height: 48px;
+  text-align: center;
+}
+
+.employee-login-page .employee-login-card form > button:not(.employee-back-to-welcome) {
+  min-height: 48px;
+  margin-top: 6px;
+  box-shadow: 0 8px 18px rgba(0, 124, 145, 0.18);
+  transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.employee-login-page .employee-login-card form > button:not(.employee-back-to-welcome):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 124, 145, 0.22);
+}
+
+.employee-login-page .employee-login-error {
+  margin: 2px 0 4px;
+  color: #b62f37;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.employee-login-page .employee-access-card {
+  margin-top: 28px;
+  padding: 15px 18px;
+  border: 1px solid #dce7e9;
+  border-radius: 12px;
+  background: #f8fbfc;
+  text-align: center;
+}
+
+.employee-login-page .employee-access-card h2 {
+  margin: 0 0 7px;
+  color: #17343d;
+  font-size: 13px;
+}
+
+.employee-login-page .employee-access-card p {
+  margin: 0;
+  color: #647b82;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.employee-login-page .employee-access-card p + p { margin-top: 5px; }
+
+.employee-login-page .employee-back-to-welcome {
+  display: inline-block;
+  margin-top: 22px;
+  color: #007c91;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: color .2s ease, transform .2s ease;
+}
+
+.employee-login-page .employee-back-to-welcome:hover {
+  color: #00687a;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 430px) {
+  .employee-login-page .employee-login-card { padding: 34px 22px 28px; }
+}

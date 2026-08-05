@@ -22,37 +22,53 @@
     background:
       linear-gradient(
         135deg,
-        #eef7f8,
-        #f8fafc
+        rgba(244, 250, 251, 0.97),
+        rgba(222, 240, 243, 0.96)
       );
   }
   
   .login-card {
     width: 100%;
     max-width: 440px;
-    padding: 40px;
+    padding: 44px 40px 40px;
     background: white;
     border-radius: 18px;
     box-shadow: 0 20px 55px rgba(15, 23, 42, 0.12);
   }
   
   .login-header {
-    margin-bottom: 32px;
+    margin-bottom: 34px;
+    text-align: center;
   }
-  
-  .login-label {
-    margin: 0 0 8px;
-    color: #007c91;
-    font-size: 14px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+
+  .login-logo {
+    display: block;
+    width: 108px;
+    height: auto;
+    margin: 0 auto 14px;
+  }
+
+  .login-brand {
+    margin-bottom: 22px;
+    text-align: center;
   }
   
   .login-header h1 {
-    margin: 0 0 12px;
-    color: #0f172a;
-    font-size: 28px;
+    margin: 0 0 10px;
+    color: #17343d;
+    font-size: 30px;
+    letter-spacing: -0.7px;
+  }
+
+  .login-portal-badge {
+    display: inline-flex;
+    margin-bottom: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #e6f4f5;
+    color: #007c91;
+    font-size: 11px;
+    font-weight: 800;
   }
   
   .login-header p {
@@ -62,7 +78,7 @@
   }
   
   .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
   
   .form-group label {

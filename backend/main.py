@@ -13,6 +13,12 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from validation import validate_claim
+from user_corrections import (
+    get_user_corrections,
+    has_unresolved_corrections,
+    review_user_correction,
+    save_user_corrections,
+)
 from database import (
     DuplicateClaimError,
     get_claim_by_id,
@@ -45,6 +51,24 @@ class LoginRequest(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+
+
+class CorrectionRequest(BaseModel):
+    field: str
+    correctedValue: str
+    reason: Optional[str] = None
+
+
+class UserCorrectionsRequest(BaseModel):
+    corrections: list[CorrectionRequest]
+
+
+class CorrectionReviewRequest(BaseModel):
+    submittedAt: str
+    decision: str
+    employeeComment: Optional[str] = None
+    requestedDocumentType: Optional[str] = None
+    reviewedBy: Optional[str] = None
 
 # 🔐 Endpoint تسجيل الدخول
 @app.post("/login")
@@ -160,6 +184,52 @@ async def get_claim(claim_id: int):
         "data": claim
     }
 
+
+@app.get("/api/claims/{claim_id}/corrections")
+async def claim_corrections(claim_id: int):
+    if get_claim_by_id(claim_id) is None:
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
+    return {"status": "success", "data": get_user_corrections(claim_id)}
+
+
+@app.put("/api/claims/{claim_id}/corrections")
+async def replace_claim_corrections(claim_id: int, payload: UserCorrectionsRequest):
+    claim = get_claim_by_id(claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
+    try:
+        corrections = save_user_corrections(
+            claim_id,
+            claim,
+            [item.dict() for item in payload.corrections],
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    return {"status": "success", "data": corrections}
+
+
+@app.patch("/api/claims/{claim_id}/corrections/{field}/review")
+async def review_claim_correction(
+    claim_id: int, field: str, payload: CorrectionReviewRequest
+):
+    if get_claim_by_id(claim_id) is None:
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
+    try:
+        correction = review_user_correction(
+            claim_id=claim_id,
+            submitted_at=payload.submittedAt,
+            field=field,
+            decision=payload.decision,
+            employee_comment=payload.employeeComment,
+            requested_document_type=payload.requestedDocumentType,
+            reviewed_by=payload.reviewedBy,
+        )
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    return {"status": "success", "data": correction}
+
 # 👩‍💼 Endpoints واجهة الموظف (نفس بيانات المطالبات بشكل مختلف)
 @app.post("/api/employee/login")
 async def employee_login(credentials: LoginRequest):
@@ -199,6 +269,11 @@ async def employee_claim(claim_id: int):
 
 @app.patch("/api/employee/claims/{claim_id}/status")
 async def employee_update_status(claim_id: int, payload: StatusUpdateRequest):
+    if payload.status == "Approved" and has_unresolved_corrections(claim_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Review all user corrections before approving this claim.",
+        )
     try:
         updated = update_claim_status(claim_id, payload.status)
     except ValueError as e:

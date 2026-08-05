@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Login.css";
+import bupaLogo from "../assets/bupa-logo.png";
 
 
 function Login({ onLogin }) {
@@ -46,9 +47,12 @@ function Login({ onLogin }) {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <p className="login-label">Claims Management</p>
-          <h1>Care Flow</h1>
-          <p>Sign in to review and manage insurance claims.</p>
+          <img className="login-logo" src={bupaLogo} alt="Bupa Arabia" />
+          <div className="welcome-brand login-brand" aria-label="Care Flow">
+            <span>care</span><strong>flow</strong>
+          </div>
+          <h1>Welcome back</h1>
+          <span className="login-portal-badge">Employee Portal</span>
         </div>
 
         <form onSubmit={handleSubmit}>

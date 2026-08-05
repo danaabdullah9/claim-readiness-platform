@@ -14,33 +14,40 @@ function Welcome({ onGetStarted, onEmployeePortal }) {
           alt="Bupa Arabia"
         />
 
-        <p className="welcome-label">Bupa Arabia</p>
+        <div className="welcome-brand" aria-label="Care Flow">
+          <span>care</span><strong>flow</strong>
+        </div>
 
-        <h1>
-          Welcome to
-          <span> Care Flow</span>
-        </h1>
+        <h1>Welcome</h1>
 
         <p className="welcome-description">
-          A smarter and easier way to prepare, review, and submit your
-          reimbursement claims.
+          A smarter way to prepare, review, and submit reimbursement claims.
         </p>
 
         <div className="welcome-actions">
-          <button className="welcome-button" onClick={onGetStarted}>
-            Member Portal
-          </button>
-          <button
-            className="welcome-button welcome-employee-button"
-            onClick={onEmployeePortal}
-          >
-            Employee Portal
-          </button>
-        </div>
+          <section className="welcome-portal-card">
+            <div>
+              <h2>Member Portal</h2>
+              <p>Submit a new claim and review your claim information.</p>
+            </div>
+            <button className="welcome-button" onClick={onGetStarted}>
+              Continue as Member
+            </button>
+          </section>
 
-        <p className="welcome-note">
-          Upload your documents and let the system prepare your claim.
-        </p>
+          <section className="welcome-portal-card">
+            <div>
+              <h2>Employee Portal</h2>
+              <p>Review assigned claims and verify submitted information.</p>
+            </div>
+            <button
+              className="welcome-button welcome-employee-button"
+              onClick={onEmployeePortal}
+            >
+              Continue as Employee
+            </button>
+          </section>
+        </div>
       </main>
     </div>
   );

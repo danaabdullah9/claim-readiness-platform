@@ -130,12 +130,12 @@ function EmployeeDashboard({ onOpenClaim }) {
       </header>
       <main className="employee-dashboard-main">
         <section className="employee-dashboard-intro">
-          <div><p className="employee-eyebrow">Claims operations</p><h1>Employee Dashboard</h1><p>Welcome back, {employee.name.split(" ")[0]}. There {claims.length === 1 ? "is" : "are"} <strong>{claims.length} claim{claims.length === 1 ? "" : "s"}</strong> in the queue.</p></div>
+          <div className="employee-dashboard-copy"><h1>Employee Dashboard</h1><p>Welcome back, {employee.name.split(" ")[0]}.</p></div>
           <span className="employee-date">{today}</span>
         </section>
         <SummaryCards counts={counts} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
         <section className="employee-work-queue" aria-labelledby="work-queue-title">
-          <div className="employee-queue-heading"><div><p className="employee-eyebrow">Submitted claims</p><h2 id="work-queue-title">My Work Queue</h2></div><button type="button" className="employee-table-action" onClick={loadClaims} disabled={isLoading}>{isLoading ? "Refreshing…" : "Refresh"}</button></div>
+          <div className="employee-queue-heading"><h2 id="work-queue-title">Submitted Claims</h2><button type="button" className="employee-table-action" onClick={loadClaims} disabled={isLoading}>{isLoading ? "Refreshing…" : "Refresh"}</button></div>
           {loadError && <div className="employee-notice" role="alert"><span>!</span>{loadError}</div>}
           <ClaimFilters search={search} onSearchChange={setSearch} activeFilter={activeFilter} onFilterChange={setActiveFilter} resultCount={filteredClaims.length} totalCount={claims.length} />
           <ClaimsTable claims={filteredClaims} onOpenClaim={onOpenClaim} />
