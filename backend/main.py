@@ -1,4 +1,13 @@
+import sys
 from typing import Optional
+
+# على ويندوز، الطرفية أحيانًا تستخدم ترميز غير UTF-8 (مثل cp1256) ما يقدر
+# يطبع الرموز التعبيرية المستخدمة في رسائل التشخيص (❌📄✅...). بدون هذا،
+# أي print() لرمز غير مدعوم يفشل بـ UnicodeEncodeError، وبما إنها ValueError
+# فرعيًا، الخطأ الحقيقي ينلبس ويظهر للمستخدم كأنه "بيانات ما تنقرأ من المستند".
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
