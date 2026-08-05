@@ -7,13 +7,23 @@ import Summary from "./pages/Summary";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import ClaimReview from "./pages/employee/ClaimReview";
 import SubmissionSuccess from "./pages/SubmissionSuccess";
+import CustomerDashboard from "./pages/CustomerDashboard";
+
+function initialCustomerPage() {
+  if (window.location.hash === "#/dashboard") return "customerDashboard";
+  if (window.location.hash === "#/new-claim") return "newClaim";
+  return "welcome";
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState(
-    window.location.hash === "#/employee" ? "employeeDashboard" : "welcome",
+    window.location.hash === "#/employee" ? "employeeDashboard" : initialCustomerPage(),
   );
   const [claimId, setClaimId] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [customer, setCustomer] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("careflow-customer")); } catch { return null; }
+  });
   // Employee dashboard navigation state. Existing page transitions remain unchanged.
   const [selectedEmployeeClaim, setSelectedEmployeeClaim] = useState(null);
 
@@ -46,17 +56,36 @@ function App() {
       <Login
         onLogin={(user) => {
           setUserId(user.id);
-          setCurrentPage("newClaim");
+          setCustomer(user);
+          sessionStorage.setItem("careflow-customer", JSON.stringify(user));
+          window.location.hash = "#/dashboard";
+          setCurrentPage("customerDashboard");
         }}
       />
     );
+  }
+
+  if (currentPage === "customerDashboard") {
+    return <CustomerDashboard user={customer} onStartClaim={() => {
+      window.location.hash = "#/new-claim";
+      setCurrentPage("newClaim");
+    }} onSignOut={() => {
+      sessionStorage.removeItem("careflow-customer");
+      setCustomer(null);
+      setUserId(null);
+      window.location.hash = "";
+      setCurrentPage("welcome");
+    }} />;
   }
 
   if (currentPage === "newClaim") {
     return (
       <NewClaim
         userId={userId}
-        onBack={() => setCurrentPage("login")}
+        onBack={() => {
+          window.location.hash = "#/dashboard";
+          setCurrentPage("customerDashboard");
+        }}
         onSubmitClaim={(newClaimId) => {
           setClaimId(newClaimId);
           setCurrentPage("summary");
@@ -65,30 +94,29 @@ function App() {
     );
   }
 
-  if (currentPage === "summary") {
-    return (
-      <div style={{ position: "relative" }}>
-        <Summary
-          claimId={claimId}
-          onEdit={() => setCurrentPage("newClaim")}
-          onSubmit={() => {
-            // Trigger your custom success popup modal instead of an alert
-            setIsSubmitted(true);
+ if (currentPage === "summary") {
+  return (
+    <div style={{ position: "relative" }}>
+      <Summary
+        claimId={claimId}
+        onEdit={() => setCurrentPage("newClaim")}
+        onSubmit={() => {
+          setIsSubmitted(true);
+        }}
+      />
+
+      {isSubmitted && (
+        <SubmissionSuccess
+          onClose={() => {
+            setIsSubmitted(false);
+            window.location.hash = "#/dashboard";
+            setCurrentPage("customerDashboard");
           }}
         />
-
-        {/* Custom Submission Success Modal Popup */}
-        {isSubmitted && (
-          <SubmissionSuccess
-            onClose={() => {
-              setIsSubmitted(false);
-              setCurrentPage("welcome");
-            }}
-          />
-        )}
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
+}
 
   return (
     <Welcome

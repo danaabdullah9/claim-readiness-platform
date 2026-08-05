@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from validation import validate_claim
@@ -14,8 +15,13 @@ from database import (
     DuplicateClaimError,
     get_claim_by_id,
     get_connection,
+    get_claim_document_file,
+    add_claim_notification,
+    list_user_claims,
+    list_user_notifications,
     list_employee_claims,
     save_claim_from_analysis,
+    store_claim_document,
     to_employee_claim,
     update_claim_status,
 )
@@ -122,6 +128,16 @@ async def analyze_claim_endpoint(
             user_id=user_id
         )
 
+        # Preserve the exact customer uploads for secure employee evidence preview.
+        await invoice.seek(0)
+        await report.seek(0)
+        store_claim_document(
+            claim_id, "Invoice", invoice.filename, invoice.content_type, await invoice.read()
+        )
+        store_claim_document(
+            claim_id, "Medical Report", report.filename, report.content_type, await report.read()
+        )
+
         return {
             "status": "success",
             "claim_id": claim_id,
@@ -174,6 +190,17 @@ async def get_claim(claim_id: int):
     return {
         "status": "success",
         "data": claim
+    }
+
+
+@app.get("/api/customers/{user_id}/dashboard")
+async def customer_dashboard(user_id: int):
+    return {
+        "status": "success",
+        "data": {
+            "claims": list_user_claims(user_id),
+            "notifications": list_user_notifications(user_id),
+        },
     }
 
 
@@ -259,6 +286,22 @@ async def employee_claim(claim_id: int):
     return {"status": "success", "data": to_employee_claim(claim)}
 
 
+@app.get("/api/employee/claims/{claim_id}/documents/{document_id}")
+async def employee_claim_document(claim_id: int, document_id: int):
+    document = get_claim_document_file(claim_id, document_id)
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail="The original file is unavailable for this older claim.",
+        )
+    return FileResponse(
+        path=document["path"],
+        media_type=document["content_type"],
+        filename=document["name"],
+        content_disposition_type="inline",
+    )
+
+
 @app.patch("/api/employee/claims/{claim_id}/status")
 async def employee_update_status(claim_id: int, payload: StatusUpdateRequest):
     if payload.status == "Approved" and has_unresolved_corrections(claim_id):
@@ -266,14 +309,30 @@ async def employee_update_status(claim_id: int, payload: StatusUpdateRequest):
             status_code=409,
             detail="Review all user corrections before approving this claim.",
         )
+    notification_copy = {
+        "Approved": ("Claim approved", "Your reimbursement claim has been approved."),
+        "Rejected": ("Claim decision issued", "Your reimbursement claim was not approved. Open the claim to review the decision."),
+        "Pending": ("Claim under review", "Your reimbursement claim is still under review."),
+        "Action Required": ("Additional documents required", "Your claims reviewer requested additional supporting documents."),
+    }
+    if payload.status not in notification_copy:
+        raise HTTPException(status_code=422, detail="Unsupported customer-facing claim status.")
     try:
-        updated = update_claim_status(claim_id, payload.status)
+        updated = True if payload.status == "Action Required" else update_claim_status(claim_id, payload.status)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     if not updated:
         raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
 
+    title, message = notification_copy[payload.status]
+    add_claim_notification(
+        claim_id,
+        "Document requested" if payload.status == "Action Required" else f"Claim {payload.status.lower()}",
+        title,
+        message,
+        payload.status if payload.status == "Action Required" else None,
+    )
     claim = get_claim_by_id(claim_id)
     return {"status": "success", "data": to_employee_claim(claim)}
 

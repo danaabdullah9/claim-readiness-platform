@@ -6,6 +6,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "database" / "claimDB.db"
+UPLOADS_DIR = BASE_DIR / "backend" / "uploads"
 
 # القيم اللي يرجعها الـ AI أحيانًا بدل القيمة الفعلية
 _EMPTY_VALUES = {"", "null", "none", "n/a", "na", "not found", "unknown", "-"}
@@ -124,6 +125,29 @@ class DuplicateClaimError(Exception):
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ClaimNotifications (
+            NotificationID INTEGER PRIMARY KEY AUTOINCREMENT,
+            ClaimID INTEGER NOT NULL,
+            UserID INTEGER NOT NULL,
+            NotificationType TEXT NOT NULL,
+            Title TEXT NOT NULL,
+            Message TEXT NOT NULL,
+            CustomerStatus TEXT,
+            CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (ClaimID) REFERENCES Claims(ClaimID),
+            FOREIGN KEY (UserID) REFERENCES USERS(user_ID)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ClaimDocumentFiles (
+            DocumentID INTEGER PRIMARY KEY,
+            StoredName TEXT NOT NULL,
+            ContentType TEXT NOT NULL,
+            FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID)
+        )
+    """)
+    conn.commit()
     return conn
 
 
@@ -256,7 +280,7 @@ def resolve_user_id(conn, user_id=None, national_id=None):
     identity_number = _clean(national_id)
     if identity_number:
         row = conn.execute(
-            "SELECT user_ID FROM USERS WHERE identity_number = ?", (identity_number,)
+            "SELECT user_ID FROM USERS WHERE NationalID = ?", (identity_number,)
         ).fetchone()
         if row:
             return row["user_ID"]
@@ -331,6 +355,51 @@ def insert_document(conn, claim_id, document_type, file_name):
         "INSERT INTO Documents (ClaimID, DocumentType, FileName) VALUES (?, ?, ?)",
         (claim_id, document_type, file_name),
     )
+
+
+def store_claim_document(claim_id, document_type, original_name, content_type, content):
+    conn = get_connection()
+    try:
+        document = conn.execute(
+            """SELECT DocumentID FROM Documents
+               WHERE ClaimID = ? AND DocumentType = ?
+               ORDER BY DocumentID DESC LIMIT 1""",
+            (claim_id, document_type),
+        ).fetchone()
+        if document is None:
+            raise LookupError(f"Document record for {document_type} was not found.")
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", Path(original_name or "document").name)
+        stored_name = f"{document['DocumentID']}_{safe_name}"
+        claim_dir = UPLOADS_DIR / str(claim_id)
+        claim_dir.mkdir(parents=True, exist_ok=True)
+        (claim_dir / stored_name).write_bytes(content)
+        conn.execute(
+            """INSERT OR REPLACE INTO ClaimDocumentFiles (DocumentID, StoredName, ContentType)
+               VALUES (?, ?, ?)""",
+            (document["DocumentID"], stored_name, content_type or "application/octet-stream"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_claim_document_file(claim_id, document_id):
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            """SELECT d.FileName, f.StoredName, f.ContentType
+               FROM Documents d JOIN ClaimDocumentFiles f ON f.DocumentID = d.DocumentID
+               WHERE d.ClaimID = ? AND d.DocumentID = ?""",
+            (claim_id, document_id),
+        ).fetchone()
+        if row is None:
+            return None
+        path = (UPLOADS_DIR / str(claim_id) / row["StoredName"]).resolve()
+        if not path.is_file() or UPLOADS_DIR.resolve() not in path.parents:
+            return None
+        return {"path": path, "name": row["FileName"], "content_type": row["ContentType"]}
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -420,8 +489,8 @@ _CLAIM_SELECT = """
         c.ClaimID, c.InvoiceNumber, c.InvoiceDate, c.DoctorName,
         c.TotalAmount, c.ClinicalSummary, c.ClaimStatus, c.CreatedAt,
         u.user_ID AS UserID, u.name AS AccountHolderName,
-        u.identity_number AS RegisteredNationalId,
-        u.email AS AccountHolderEmail, u.phone_number AS AccountHolderPhone,
+        u.NationalID AS RegisteredNationalId,
+        u.Email AS AccountHolderEmail, NULL AS AccountHolderPhone,
         p.ProviderName AS HospitalName, p.ProviderType, p.City,
         d.DiagnosisCode, d.DiagnosisDescription
     FROM Claims c
@@ -468,10 +537,12 @@ def _hydrate_claim(conn, row):
 
     documents = conn.execute(
         """
-        SELECT DocumentID, DocumentType, FileName, UploadDate
-        FROM Documents
-        WHERE ClaimID = ?
-        ORDER BY DocumentID
+        SELECT d.DocumentID, d.DocumentType, d.FileName, d.UploadDate,
+               CASE WHEN f.DocumentID IS NULL THEN 0 ELSE 1 END AS HasOriginal
+        FROM Documents d
+        LEFT JOIN ClaimDocumentFiles f ON f.DocumentID = d.DocumentID
+        WHERE d.ClaimID = ?
+        ORDER BY d.DocumentID
         """,
         (result["ClaimID"],),
     ).fetchall()
@@ -519,6 +590,67 @@ def update_claim_status(claim_id, status):
         )
         conn.commit()
         return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
+def add_claim_notification(claim_id, notification_type, title, message, customer_status=None):
+    conn = get_connection()
+    try:
+        claim = conn.execute("SELECT UserID FROM Claims WHERE ClaimID = ?", (claim_id,)).fetchone()
+        if claim is None:
+            return False
+        conn.execute(
+            """INSERT INTO ClaimNotifications
+               (ClaimID, UserID, NotificationType, Title, Message, CustomerStatus)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (claim_id, claim["UserID"], notification_type, title, message, customer_status),
+        )
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def latest_customer_status(claim_id):
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            """SELECT CustomerStatus FROM ClaimNotifications
+               WHERE ClaimID = ? AND CustomerStatus IS NOT NULL
+               ORDER BY NotificationID DESC LIMIT 1""",
+            (claim_id,),
+        ).fetchone()
+        return row["CustomerStatus"] if row else None
+    finally:
+        conn.close()
+
+
+def list_user_notifications(user_id):
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT n.*, c.ClinicalSummary FROM ClaimNotifications n
+               JOIN Claims c ON c.ClaimID = n.ClaimID
+               WHERE n.UserID = ? ORDER BY n.NotificationID DESC""",
+            (user_id,),
+        ).fetchall()
+        notifications = []
+        for row in rows:
+            meta, _ = _unpack_clinical_summary(row["ClinicalSummary"])
+            notifications.append({
+                "id": row["NotificationID"],
+                "claimId": meta.get("ClaimRef") or f"CLM-{row['ClaimID']:04d}",
+                "claimDbId": row["ClaimID"],
+                "sender": "Claims reviewer",
+                "type": row["NotificationType"],
+                "title": row["Title"],
+                "preview": row["Message"],
+                "timestamp": row["CreatedAt"],
+                "unread": True,
+                "thread": [{"from": "employee", "text": row["Message"], "time": row["CreatedAt"]}],
+            })
+        return notifications
     finally:
         conn.close()
 
@@ -639,6 +771,10 @@ def to_employee_claim(claim):
     verification = claim["Verification"]
     status = _STATUS_MAP.get(claim["ClaimStatus"], "Pending Review")
 
+    workflow_status = latest_customer_status(claim["ClaimID"])
+    if claim["ClaimStatus"] == "Pending" and workflow_status == "Action Required":
+        status = "Waiting for Member"
+
     missing = _missing_documents(claim)
     if status == "Pending Review" and missing:
         status = "Missing Documents"
@@ -704,10 +840,12 @@ def to_employee_claim(claim):
         "highlights": highlights,
         "documents": [
             {
+                "id": document["DocumentID"],
                 "name": document["FileName"],
                 "type": document["DocumentType"],
                 "uploadDate": (document["UploadDate"] or "")[:10],
                 "status": "Verified" if verification["MatchStatus"] == "success" else "Needs attention",
+                "previewUrl": f"http://127.0.0.1:8001/api/employee/claims/{claim['ClaimID']}/documents/{document['DocumentID']}" if document.get("HasOriginal") else None,
             }
             for document in claim["Documents"]
         ],
@@ -719,3 +857,50 @@ def to_employee_claim(claim):
 
 def list_employee_claims():
     return [to_employee_claim(claim) for claim in list_claims()]
+
+
+def to_customer_claim(claim):
+    raw_status = claim["ClaimStatus"]
+    workflow_status = latest_customer_status(claim["ClaimID"])
+    status = workflow_status if raw_status == "Pending" and workflow_status else {
+        "Pending": "Under Review", "Approved": "Approved", "Rejected": "Rejected"
+    }.get(raw_status, "Submitted")
+    descriptions = {
+        "Under Review": "A reviewer is checking your documents.",
+        "Action Required": "We need additional information from you.",
+        "Approved": "Your claim has been approved.",
+        "Rejected": "Open the claim to view the decision reason.",
+    }
+    reference = claim.get("ClaimRef") or f"CLM-{claim['ClaimID']:04d}"
+    submitted = (claim.get("CreatedAt") or "")[:10]
+    return {
+        "id": reference,
+        "claimDbId": claim["ClaimID"],
+        "submitted": submitted,
+        "amount": f"SAR {claim['TotalAmount']:,.2f}",
+        "status": status,
+        "description": descriptions.get(status, "Your claim has been received."),
+        "latestUpdate": f"Status updated: {status}",
+        "category": claim.get("ClaimType") or "Medical reimbursement",
+        "stage": 2 if status in {"Under Review", "Action Required"} else 3,
+        "order": claim["ClaimID"],
+        "documents": [document["FileName"] for document in claim["Documents"]],
+        "timeline": [[submitted, "Claim submitted"], ["Latest", f"Claim status: {status}"]],
+        "request": ({
+            "title": "Additional information required",
+            "message": "Your claims reviewer requested additional supporting documents. Open this claim to respond.",
+            "date": "Latest update",
+            "action": "Upload supporting documents",
+        } if status == "Action Required" else None),
+    }
+
+
+def list_user_claims(user_id):
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            _CLAIM_SELECT + " WHERE c.UserID = ? ORDER BY c.ClaimID DESC", (user_id,)
+        ).fetchall()
+        return [to_customer_claim(_hydrate_claim(conn, row)) for row in rows]
+    finally:
+        conn.close()
