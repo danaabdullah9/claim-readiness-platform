@@ -80,9 +80,21 @@ def _append_document_content(content, label, content_bytes, content_type, filena
 
 PROMPT = """
 You are an expert medical claims and insurance AI auditor and validator.
-Analyze these TWO images provided very carefully:
-- Image 1: Medical Invoice
-- Image 2: Medical Report
+You are given one or more documents belonging to a single reimbursement claim.
+They may arrive in any order and there may be one, two or several of them.
+
+FIRST, classify every document you are shown into exactly one of:
+  "Invoice"        — has an invoice number, priced line items and a total
+  "Medical Report" — describes the patient's condition, diagnosis and treatment
+  "Prescription"   — lists dispensed medication
+  "Other"          — anything else (referral, lab result, receipt, ID copy)
+
+A single document can serve more than one role: some clinics issue one page that
+is both an itemised invoice and a clinical report. When that happens, say so in
+"combined_document": true and classify it as "Invoice".
+
+THEN extract the claim data from whichever documents contain it. Do not assume a
+field lives in a particular document — read all of them.
 
 CRITICAL EXTRACTION RULES:
 - Read the text literally from the images. DO NOT guess, fabricate, or assume any values.
@@ -111,17 +123,20 @@ CRITICAL EXTRACTION RULES:
 - For Currency, return the ISO 4217 code of the currency the invoice is billed in
   (SAR, USD, AED, EGP, KWD, ...). Saudi invoices normally show "SAR", "SR", "ر.س"
   or "﷼" — all of these are "SAR". If no currency appears anywhere, return "SAR".
-- ReportPatientName, ReportDiagnosisCode and ReportDate must be read FROM THE MEDICAL
-  REPORT (image 2), not from the invoice, so the two documents can be compared. If the
-  report does not state one of them, return null for it.
+- ReportPatientName, ReportDiagnosisCode and ReportDate must be read FROM THE CLINICAL
+  document, not from the invoice, so the two sources can be compared. If only one
+  combined document exists, return the same values you read there. If a value is absent,
+  return null.
 
 Perform the following tasks:
 
-1. Document Type Check:
-   - Image 1 MUST be an invoice: it has an invoice number, priced line items and a total.
-     If Image 1 is a medical report or any other document, set "is_valid": false, explain
-     it in "validation_message", and DO NOT take amounts from Image 2.
-   - Image 2 MUST be a medical report. If it is not, set "is_valid": false and explain.
+1. Document Coverage Check:
+   - The claim needs BILLING evidence (an invoice: invoice number, line items, total)
+     and CLINICAL evidence (diagnosis and treatment description).
+   - Both may come from the same document or from different documents.
+   - Set "has_billing_evidence" and "has_clinical_evidence" accordingly.
+   - Set "is_valid": false only when one of the two kinds of evidence is missing
+     entirely, and say which one in "validation_message".
 
 2. Data Extraction: extract every field listed in the "data" object below.
 
@@ -140,6 +155,8 @@ Perform the following tasks:
      or abbreviations of the same facility.
    - Set "match_status" to "success" when there are no discrepancies, "warning" when only
      low-severity ones exist, and "rejected" when any high-severity one exists.
+   - When a single combined document is the only source, there is nothing to cross-check:
+     set "match_status" to "success" and leave "discrepancies" empty.
    - If the two documents clearly belong to two different claims, also set
      "is_valid": false.
 
@@ -164,6 +181,11 @@ Return a strict JSON format with this exact structure (Return ONLY valid JSON, n
   "discrepancies": [
     {"field": "...", "invoice_value": "...", "report_value": "...", "severity": "low"}
   ],
+  "documents": [
+    {"file_name": "...", "type": "Invoice", "combined_document": false, "summary": "..."}
+  ],
+  "has_billing_evidence": true,
+  "has_clinical_evidence": true,
   "document_relation": {
     "invoice_specialty": "...",
     "report_specialty": "...",
@@ -201,65 +223,76 @@ Return a strict JSON format with this exact structure (Return ONLY valid JSON, n
 """
 
 
-async def analyze_claim(invoice: UploadFile, report: UploadFile):
-    # تعريف العميل هنا يضمن قراءة الـ API Key بشكل صحيح بدون أخطاء
+async def analyze_documents(files):
+    """يحلّل أي عدد من الملفات ويستخرج منها مطالبة واحدة.
+
+    لا نفترض أن الملف الأول فاتورة والثاني تقريرًا: الموديل يصنّف كل ملف بنفسه،
+    فيقبل ملفًا واحدًا يحمل كل المعلومات، ويرفض ثلاثة ملفات ناقصة.
+    """
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     try:
-        print(f"Processing claim - Invoice: {invoice.filename}, Report: {report.filename}")
+        print(f"📄 Processing {len(files)} document(s): {[f['filename'] for f in files]}")
 
-        invoice_contents = await invoice.read()
-        report_contents = await report.read()
+        if not files:
+            raise HTTPException(status_code=400, detail="No files were uploaded.")
 
-        if not invoice_contents or not report_contents:
-            raise HTTPException(status_code=400, detail="One of the uploaded files is empty.")
-
-        # حارس: نفس الملف في الخانتين يعني الفاتورة ما وصلت أصلاً، والنتيجة
-        # بتطلع أرقام التقرير بدل أرقام الفاتورة بدون أي خطأ ظاهر.
-        if hashlib.sha256(invoice_contents).digest() == hashlib.sha256(report_contents).digest():
-            raise HTTPException(
-                status_code=400,
-                detail="The invoice and the medical report are the same file. "
-                       "Please upload the invoice in the invoice field."
-            )
+        seen = {}
+        for entry in files:
+            if not entry["content"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"The file '{entry['filename']}' is empty.",
+                )
+            digest = hashlib.sha256(entry["content"]).hexdigest()
+            if digest in seen:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{entry['filename']}' and '{seen[digest]}' are the same file. "
+                           "Please upload each document only once.",
+                )
+            seen[digest] = entry["filename"]
 
         message_content = [{"type": "text", "text": PROMPT}]
-        _append_document_content(
-            message_content, "This is the Medical Invoice:",
-            invoice_contents, invoice.content_type, invoice.filename
-        )
-        _append_document_content(
-            message_content, "This is the Medical Report:",
-            report_contents, report.content_type, report.filename
-        )
+        for index, entry in enumerate(files, start=1):
+            _append_document_content(
+                message_content,
+                f"Document {index} of {len(files)} — file name \"{entry['filename']}\":",
+                entry["content"], entry["content_type"], entry["filename"],
+            )
 
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[
-                {
-                    "role": "user",
-                    "content": message_content
-                }
-            ],
+            messages=[{"role": "user", "content": message_content}],
             response_format={"type": "json_object"},
-            temperature=0
+            temperature=0,
         )
 
         result_content = json.loads(response.choices[0].message.content)
-        print("Enhanced claim analysis pipeline completed successfully.")
+        print("✅ Enhanced Pipeline Executed Successfully:", result_content)
 
         return {
             "status": "success",
-            "filenames": {
-                "invoice": invoice.filename,
-                "report": report.filename
-            },
-            **result_content
+            "filenames": [entry["filename"] for entry in files],
+            **result_content,
         }
 
     except HTTPException:
-        # بدون هذا السطر كل أخطاء 400 المقصودة فوق تنقلب لـ 500 برسالة غامضة
         raise
     except Exception as e:
-        print(f"OpenAI error: {str(e)}")
+        print(f"❌ OpenAI Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def read_uploads(uploads):
+    """يقرأ محتوى الملفات المرفوعة مرة واحدة ويعيد المؤشر لبدايته."""
+    entries = []
+    for upload in uploads:
+        await upload.seek(0)
+        entries.append({
+            "filename": upload.filename,
+            "content_type": upload.content_type,
+            "content": await upload.read(),
+        })
+        await upload.seek(0)
+    return entries

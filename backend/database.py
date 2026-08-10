@@ -431,7 +431,8 @@ def save_claim_from_analysis(analysis, invoice_filename, report_filename, user_i
                 "ProviderName": _clean(extracted.get("ProviderName")),
                 "Department": _clean(extracted.get("Department")),
                 "ClaimType": _clean(extracted.get("ClaimType")),
-                "InsuranceCompany": _clean(extracted.get("InsuranceCompany")),
+                # المشروع لبوبا: شركة التأمين ثابتة ولا تُقرأ من المستند
+                "InsuranceCompany": "Bupa",
                 "PolicyNumber": _clean(extracted.get("PolicyNumber")),
                 "ServiceDate": _clean(extracted.get("ServiceDate")),
                 # المبلغ الأصلي قبل التحويل (نخزّنه فقط لو العملة مو ريال)
@@ -490,7 +491,7 @@ _CLAIM_SELECT = """
         c.TotalAmount, c.ClinicalSummary, c.ClaimStatus, c.CreatedAt,
         u.user_ID AS UserID, u.name AS AccountHolderName,
         u.NationalID AS RegisteredNationalId,
-        u.Email AS AccountHolderEmail, NULL AS AccountHolderPhone,
+        u.Email AS AccountHolderEmail,
         p.ProviderName AS HospitalName, p.ProviderType, p.City,
         d.DiagnosisCode, d.DiagnosisDescription
     FROM Claims c
@@ -518,7 +519,7 @@ def _hydrate_claim(conn, row):
     result["ProviderName"] = meta.get("ProviderName")
     result["Department"] = meta.get("Department")
     result["ClaimType"] = meta.get("ClaimType")
-    result["InsuranceCompany"] = meta.get("InsuranceCompany")
+    result["InsuranceCompany"] = "Bupa"
     result["PolicyNumber"] = meta.get("PolicyNumber")
     result["ServiceDate"] = meta.get("ServiceDate")
     result["Currency"] = "SAR"
@@ -681,7 +682,7 @@ def _readiness(claim):
     for item in claim["Verification"]["Discrepancies"]:
         score -= 25 if str(item.get("severity", "low")).lower() == "high" else 8
 
-    for field in ("ClaimRef", "MemberId", "NationalId", "PolicyNumber", "InsuranceCompany"):
+    for field in ("ClaimRef", "MemberId", "NationalId", "PolicyNumber"):
         if not claim.get(field):
             score -= 5
 
@@ -792,13 +793,8 @@ def to_employee_claim(claim):
     highlights = {}
     if claim.get("DiagnosisDescription"):
         highlights["Diagnosis"] = f"{claim['DiagnosisDescription']} ({claim.get('DiagnosisCode')})"
-    if claim.get("Department"):
-        highlights["Clinic / Department"] = claim["Department"]
     if claim.get("DoctorName"):
         highlights["Treating Physician"] = claim["DoctorName"]
-    if claim.get("ProviderName"):
-        highlights["Service Provider"] = claim["ProviderName"]
-    highlights["Claimed Amount"] = f"SAR {claim['TotalAmount']:,.2f}"
     if claim.get("OriginalCurrency"):
         highlights["Original Amount"] = (
             f"{claim['OriginalCurrency']} {claim['OriginalAmount']:,.2f} "
@@ -815,17 +811,17 @@ def to_employee_claim(claim):
             "memberId": claim.get("MemberId") or "—",
             "nationalId": claim.get("NationalId") or "—",
             "policyNumber": claim.get("PolicyNumber") or "—",
-            "phone": claim.get("AccountHolderPhone") or "—",
             "email": claim.get("AccountHolderEmail") or "—",
         },
         "submittedBy": claim.get("AccountHolderName"),
-        "insuranceCompany": claim.get("InsuranceCompany") or "—",
+        "insuranceCompany": "Bupa",
         "claimType": claim.get("ClaimType") or "Reimbursement",
         "serviceType": claim.get("ProviderType") or "Outpatient",
         "submissionDate": submission_date,
         "invoiceDate": claim["InvoiceDate"],
         "invoiceNumber": claim["InvoiceNumber"],
         "provider": claim.get("HospitalName"),
+        "serviceProvider": claim.get("ProviderName") or "—",
         "department": claim.get("Department") or "—",
         "amount": claim["TotalAmount"],
         "currency": "SAR",

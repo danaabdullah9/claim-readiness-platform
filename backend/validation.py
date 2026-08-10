@@ -130,14 +130,62 @@ def _existing_claim(invoice_number):
 # القواعد
 # ---------------------------------------------------------------------------
 
+# الحقول التي بدونها لا تكتمل المطالبة مهما كان عدد الملفات
+_REQUIRED_DATA = [
+    ("InvoiceNumber", "invoice number"),
+    ("InvoiceDate", "invoice date"),
+    ("HospitalName", "name of the facility that issued the invoice"),
+    ("DoctorName", "treating physician"),
+    ("DiagnosisCode", "diagnosis code"),
+    ("DiagnosisDescription", "diagnosis description"),
+    ("TotalAmount", "total amount including VAT"),
+]
+
+
 def _check_document_types(analysis, rejections):
-    """المستندات نفسها: فاتورة حقيقية + تقرير طبي حقيقي."""
-    if analysis.get("is_valid") is False:
+    """المطلوب هو اكتمال الأدلة لا عدد الملفات.
+
+    ملف واحد يحمل الفوترة والتفاصيل السريرية معًا مقبول، وثلاثة ملفات ينقصها
+    أحد النوعين مرفوضة.
+    """
+    if analysis.get("has_billing_evidence") is False:
+        rejections.append(_rejection(
+            "NO_BILLING_EVIDENCE",
+            "No invoice was found in the uploaded files",
+            "None of the uploaded files contains an invoice number, priced line items "
+            "and a total. Upload the itemised invoice issued by the provider.",
+        ))
+
+    if analysis.get("has_clinical_evidence") is False:
+        rejections.append(_rejection(
+            "NO_CLINICAL_EVIDENCE",
+            "No medical report was found in the uploaded files",
+            "None of the uploaded files describes the diagnosis and the treatment "
+            "provided. Upload the medical report or a clinical summary.",
+        ))
+
+    if analysis.get("is_valid") is False and not rejections:
         rejections.append(_rejection(
             "INVALID_DOCUMENTS",
             "The uploaded documents did not pass validation",
             analysis.get("validation_message")
-            or "One of the two files is not the document type it should be.",
+            or "The uploaded files are not the document types this claim needs.",
+        ))
+
+
+def _check_required_data(extracted, rejections):
+    """كل حقل مطلوب لا بد أن يُقرأ من أحد الملفات."""
+    missing = [
+        label for key, label in _REQUIRED_DATA
+        if _clean(extracted.get(key)) is None
+    ]
+    if missing:
+        listed = ", ".join(missing)
+        rejections.append(_rejection(
+            "INCOMPLETE_DATA",
+            f"{len(missing)} required detail(s) could not be read from your files",
+            f"The following could not be found in any uploaded document: {listed}. "
+            "Upload a clearer copy, or add the document that shows these details.",
         ))
 
 
@@ -269,6 +317,7 @@ def validate_claim(analysis, user_id=None):
     rejections = []
 
     _check_document_types(analysis, rejections)
+    _check_required_data(extracted, rejections)
     _check_documents_related(analysis, extracted, rejections)
     _check_patient_identity(extracted, _account_holder_name(user_id), rejections)
     _check_submission_window(extracted, rejections)

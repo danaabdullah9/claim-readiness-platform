@@ -22,6 +22,32 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from validation import validate_claim
+from verification import build_checklist
+from decision_engine import (
+    decide,
+    get_claim_decision,
+    mark_recurring_approved,
+    save_claim_decision,
+)
+from fraud_detection import (
+    add_to_blacklist,
+    fingerprint_document,
+    is_blacklisted,
+    list_blacklist,
+    remove_from_blacklist,
+    save_fingerprint,
+    save_signals,
+    scan_claim,
+)
+from member_profile import (
+    clinical_context_for_claim,
+    get_consent,
+    get_family,
+    get_medical_history,
+    get_member_policy,
+    set_consent,
+    set_member_tier,
+)
 from user_corrections import (
     get_user_corrections,
     has_unresolved_corrections,
@@ -44,7 +70,7 @@ from database import (
 )
 
 # استيراد دالة التحليل من ملف الـ AI الموجود معك في نفس المجلد (backend)
-from ai_service import analyze_claim
+from ai_service import analyze_documents, read_uploads
 
 app = FastAPI(title="Claim Readiness Platform - Backend")
 
@@ -65,6 +91,22 @@ class LoginRequest(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+
+
+class BlacklistRequest(BaseModel):
+    user_id: Optional[int] = None
+    national_id: Optional[str] = None
+    reason: str
+    added_by: Optional[str] = "employee"
+
+
+class TierRequest(BaseModel):
+    tier: str
+
+
+class ConsentRequest(BaseModel):
+    share_with_head: Optional[bool] = None
+    share_history: Optional[bool] = None
 
 
 class CorrectionRequest(BaseModel):
@@ -118,13 +160,18 @@ async def login(credentials: LoginRequest):
 # 🤖 Endpoint معالجة المطالبات والذكاء الاصطناعي (مرتبط بـ NewClaim.jsx)
 @app.post("/api/analyze-claim")
 async def analyze_claim_endpoint(
-    invoice: UploadFile = File(...),
-    report: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     user_id: Optional[int] = Form(None)
 ):
+    """خانة رفع واحدة: أي عدد من الملفات، والقبول يعتمد على اكتمال المعلومات."""
     try:
-        # استدعاء دالة الـ AI اللي في ملف ai_service.py لمعالجة الفاتورة والتقرير
-        result = await analyze_claim(invoice, report)
+        if not files:
+            raise HTTPException(status_code=400, detail="Attach at least one file.")
+        if len(files) > 8:
+            raise HTTPException(status_code=400, detail="Attach at most 8 files.")
+
+        entries = await read_uploads(files)
+        result = await analyze_documents(entries)
 
         # قواعد القبول: أي مطالبة ترسب هنا ما تُحفظ ولا يوصل صاحبها لصفحة الملخص
         verdict = validate_claim(result, user_id=user_id)
@@ -137,31 +184,102 @@ async def analyze_claim_endpoint(
                 },
             )
 
-        # حفظ البيانات المستخرجة في الجداول الموجودة وإرجاع رقم المطالبة
+        # تصنيف الـ AI يحدد نوع كل مستند عند الحفظ
+        classified = {
+            item.get("file_name"): item.get("type")
+            for item in (result.get("documents") or [])
+            if item.get("file_name")
+        }
+
+        def document_type(name):
+            kind = classified.get(name)
+            return kind if kind in ("Invoice", "Medical Report", "Prescription") else "Other"
+
+        invoice_name = next(
+            (e["filename"] for e in entries if document_type(e["filename"]) == "Invoice"), None
+        )
+        report_name = next(
+            (e["filename"] for e in entries if document_type(e["filename"]) == "Medical Report"),
+            invoice_name,  # مستند مدمج يخدم الدورين
+        )
+
         claim_id = save_claim_from_analysis(
             analysis=result,
-            invoice_filename=invoice.filename,
-            report_filename=report.filename,
+            invoice_filename=invoice_name or entries[0]["filename"],
+            report_filename=report_name or entries[0]["filename"],
             user_id=user_id
         )
 
-        # Preserve the exact customer uploads for secure employee evidence preview.
-        await invoice.seek(0)
-        await report.seek(0)
-        store_claim_document(
-            claim_id, "Invoice", invoice.filename, invoice.content_type, await invoice.read()
+        for entry in entries:
+            store_claim_document(
+                claim_id, document_type(entry["filename"]),
+                entry["filename"], entry["content_type"], entry["content"],
+            )
+
+        # ---- طبقة الذكاء: بصمة المستندات ← كشف الاحتيال ← قرار البنود ----
+        stored = get_claim_by_id(claim_id)
+        extracted = result.get("data") or {}
+
+        fingerprints = [
+            (entry, fingerprint_document(entry["content"], entry["filename"], entry["content_type"]))
+            for entry in entries
+        ]
+        billing = next(
+            (fp for entry, fp in fingerprints if document_type(entry["filename"]) == "Invoice"),
+            fingerprints[0][1],
         )
-        store_claim_document(
-            claim_id, "Medical Report", report.filename, report.content_type, await report.read()
+        clinical = next(
+            (fp for entry, fp in fingerprints
+             if document_type(entry["filename"]) == "Medical Report"),
+            None,
         )
+
+        fraud = scan_claim(
+            user_id=stored["UserID"],
+            invoice_fingerprint=billing,
+            report_fingerprint=clinical,
+            amount=stored["TotalAmount"],
+            provider_name=stored.get("HospitalName"),
+            diagnosis_code=stored.get("DiagnosisCode"),
+            national_id=stored.get("NationalId"),
+        )
+
+        # البصمة تُحفظ بعد الفحص، وإلا طابقت المطالبة نفسها
+        for entry, fingerprint in fingerprints:
+            save_fingerprint(
+                claim_id, stored["UserID"], document_type(entry["filename"]), fingerprint
+            )
+        save_signals(claim_id, stored["UserID"], fraud["signals"])
+
+        decision = decide(
+            user_id=stored["UserID"],
+            amount=stored["TotalAmount"],
+            diagnosis_code=stored.get("DiagnosisCode"),
+            procedure_code=extracted.get("ProcedureCode"),
+            description=extracted.get("DiagnosisDescription") or stored.get("DiagnosisDescription"),
+            claim_type=stored.get("ClaimType"),
+            service_date=stored.get("ServiceDate") or stored.get("InvoiceDate"),
+            member_age=extracted.get("Age"),
+            member_gender=extracted.get("Gender"),
+            fraud_result=fraud,
+            claim_id=claim_id,
+        )
+
+        save_claim_decision(claim_id, decision)
+
+        if decision["auto_processed"] and decision["recurring"].get("rule_id"):
+            mark_recurring_approved(
+                decision["recurring"]["rule_id"],
+                stored.get("ServiceDate") or stored.get("InvoiceDate"),
+            )
 
         return {
             "status": "success",
             "claim_id": claim_id,
-            "data": result
+            "data": result,
+            "decision": decision,
         }
     except DuplicateClaimError as e:
-        # شبكة أمان لو وصلت مطالبة مكررة بعد فحص القواعد (سباق بين طلبين)
         raise HTTPException(
             status_code=422,
             detail={
@@ -188,10 +306,8 @@ async def analyze_claim_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # 📄 Endpoint عرض المطالبة المخزّنة (مرتبط بصفحة Summary.jsx)
 @app.get("/api/claims/{claim_id}")
@@ -354,6 +470,127 @@ async def employee_update_status(claim_id: int, payload: StatusUpdateRequest):
     return {"status": "success", "data": to_employee_claim(claim)}
 
 
+
+# 🧠 نقاط نهاية طبقة الذكاء (البنود + الاحتيال + العائلة + التاريخ المرضي)
+@app.get("/api/employee/claims/{claim_id}/intelligence")
+async def employee_claim_intelligence(claim_id: int):
+    """كل ما يحتاجه الموظف لاتخاذ القرار في نداء واحد."""
+    claim = get_claim_by_id(claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
+
+    stored = get_claim_decision(claim_id)
+    if stored is not None:
+        decision = stored
+    else:
+        # مطالبة قديمة قبل تفعيل المحرّك: نحسبها الآن بدون حفظ
+        fraud = scan_claim(
+            user_id=claim["UserID"],
+            amount=claim["TotalAmount"],
+            provider_name=claim.get("HospitalName"),
+            diagnosis_code=claim.get("DiagnosisCode"),
+            national_id=claim.get("NationalId"),
+        )
+        decision = decide(
+            user_id=claim["UserID"],
+            amount=claim["TotalAmount"],
+            diagnosis_code=claim.get("DiagnosisCode"),
+            description=claim.get("DiagnosisDescription"),
+            claim_type=claim.get("ClaimType"),
+            service_date=claim.get("InvoiceDate"),
+            fraud_result=fraud,
+            claim_id=claim_id,
+        )
+
+    return {
+        "status": "success",
+        "data": {
+            **decision,
+            "checklist": build_checklist(claim, decision),
+            "member": {
+                "user_id": claim["UserID"],
+                "name": claim.get("PatientName"),
+                "national_id": claim.get("NationalId"),
+                "blacklisted": is_blacklisted(user_id=claim["UserID"]) is not None,
+                "policy": get_member_policy(claim["UserID"]),
+                "family": get_family(claim["UserID"]),
+                "history": get_medical_history(claim["UserID"]),
+            },
+        },
+    }
+
+
+@app.get("/api/employee/blacklist")
+async def employee_blacklist():
+    return {"status": "success", "data": list_blacklist()}
+
+
+@app.post("/api/employee/blacklist")
+async def employee_add_blacklist(payload: BlacklistRequest):
+    try:
+        entry_id = add_to_blacklist(
+            user_id=payload.user_id,
+            national_id=payload.national_id,
+            reason=payload.reason,
+            added_by=payload.added_by,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    return {"status": "success", "entry_id": entry_id, "data": list_blacklist()}
+
+
+@app.delete("/api/employee/blacklist/{entry_id}")
+async def employee_remove_blacklist(entry_id: int):
+    remove_from_blacklist(entry_id)
+    return {"status": "success", "data": list_blacklist()}
+
+
+@app.patch("/api/employee/members/{user_id}/tier")
+async def employee_set_tier(user_id: int, payload: TierRequest):
+    try:
+        set_member_tier(user_id, payload.tier)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    return {"status": "success", "data": get_member_policy(user_id)}
+
+
+# 👨‍👩‍👧 العائلة وموافقات مشاركة البيانات (واجهة العضو)
+@app.get("/api/members/{user_id}/family")
+async def member_family(user_id: int):
+    return {
+        "status": "success",
+        "data": {
+            "policy": get_member_policy(user_id),
+            "family": get_family(user_id),
+            "consent": get_consent(user_id),
+        },
+    }
+
+
+@app.patch("/api/members/{user_id}/consent")
+async def member_set_consent(user_id: int, payload: ConsentRequest):
+    try:
+        consent = set_consent(
+            user_id,
+            share_with_head=payload.share_with_head,
+            share_history=payload.share_history,
+        )
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error))
+    return {"status": "success", "data": consent}
+
+
+@app.get("/api/members/{user_id}/history")
+async def member_history(user_id: int):
+    return {
+        "status": "success",
+        "data": {
+            "conditions": get_medical_history(user_id),
+            "policy": get_member_policy(user_id),
+        },
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
