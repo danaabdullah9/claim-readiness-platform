@@ -480,3 +480,123 @@ input {
   font-size: 0.83rem;
   font-weight: 600;
 }
+
+/* ===================================================================
+   خانة رفع واحدة لكل مستندات المطالبة
+   =================================================================== */
+
+.dropzone-hint {
+  margin: 0 0 16px;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: #64748b;
+  max-width: 70ch;
+}
+
+.dropzone {
+  position: relative;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzone.is-dragging {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.dropzone label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 38px 20px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.dropzone-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.dropzone label strong { font-size: 1rem; color: #0f172a; }
+.dropzone label small  { font-size: 0.82rem; color: #94a3b8; }
+
+.file-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.file-icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #e2e8f0;
+  color: #475569;
+  display: grid;
+  place-items: center;
+}
+
+.file-meta { flex: 1; min-width: 0; }
+
+.file-meta strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta small { font-size: 0.76rem; color: #94a3b8; }
+
+.file-remove {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.file-remove:hover { background: #fee2e2; color: #991b1b; }
+
+@media (max-width: 640px) {
+  .dropzone label { padding: 28px 14px; }
+}

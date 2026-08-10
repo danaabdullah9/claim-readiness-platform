@@ -2,66 +2,10 @@ import { useRef, useState } from "react";
 import SubmissionSuccess from "./SubmissionSuccess";
 import "./NewClaim.css";
 
-function UploadField({ id, label, file, onChange, onRemove }) {
-  const inputRef = useRef(null);
-
-  return (
-    <div className="upload-field">
-      <div className="upload-heading">
-        <label htmlFor={id}>{label}</label>
-        <span>Required</span>
-      </div>
-
-      <div className={`upload-area${file ? " has-file" : ""}`}>
-        <svg className="upload-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 16V4M8 8l4-4 4 4M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
-        </svg>
-
-        {file ? (
-          <>
-            <p className="file-name">{file.name}</p>
-            <p className="upload-help upload-complete">Uploaded successfully</p>
-            <div className="file-actions">
-              <button type="button" onClick={() => inputRef.current?.click()}>
-                Replace File
-              </button>
-              <button type="button" onClick={onRemove}>
-                Remove
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p>Select or drop your {label.toLowerCase()} here</p>
-            <p className="upload-help">PDF, PNG, JPG, or JPEG. One file only.</p>
-            <button
-              type="button"
-              className="choose-file-button"
-              onClick={() => inputRef.current?.click()}
-            >
-              Choose file
-            </button>
-          </>
-        )}
-
-        <input
-          ref={inputRef}
-          id={id}
-          className="visually-hidden"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
-          onChange={onChange}
-        />
-      </div>
-    </div>
-  );
-}
-
 const API_BASE_URL = "http://127.0.0.1:8001";
 
 function NewClaim({ onBack, onSubmitClaim, userId }) {
-  const [invoiceFile, setInvoiceFile] = useState(null);
-  const [prescriptionFile, setPrescriptionFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [submitError, setSubmitError] = useState("");
@@ -70,19 +14,46 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
   
   // Added state to control the success popup overlay
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const isComplete = Boolean(invoiceFile) && Boolean(prescriptionFile);
-  const uploadedCount = Number(Boolean(invoiceFile)) + Number(Boolean(prescriptionFile));
+  const isComplete = files.length > 0;
+  const uploadedCount = files.length;
 
-  function updateFile(setFile) {
-    return (event) => {
-      setFile(event.target.files?.[0] ?? null);
-      setHasInteracted(true);
-      setSuccessMessage("");
-      setRejections([]);
-      setSubmitError("");
-      event.target.value = "";
-    };
+  function addFiles(incoming) {
+    const added = Array.from(incoming || []);
+    if (added.length === 0) return;
+
+    setFiles((current) => {
+      const merged = [...current];
+      added.forEach((file) => {
+        // نفس الملف مرتين لا يضيف معلومة، فنتجاهله بدل إرساله للتحليل
+        const duplicate = merged.some(
+          (existing) =>
+            existing.name === file.name &&
+            existing.size === file.size &&
+            existing.lastModified === file.lastModified,
+        );
+        if (!duplicate && merged.length < 8) merged.push(file);
+      });
+      return merged;
+    });
+
+    setHasInteracted(true);
+    setSuccessMessage("");
+    setRejections([]);
+    setSubmitError("");
+  }
+
+  function removeFile(index) {
+    setFiles((current) => current.filter((_, position) => position !== index));
+    setRejections([]);
+    setSubmitError("");
+  }
+
+  function onDrop(event) {
+    event.preventDefault();
+    setIsDragging(false);
+    addFiles(event.dataTransfer?.files);
   }
 
   async function handleSubmit(event) {
@@ -95,24 +66,11 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
       return;
     }
 
-    // حارس: نفس الملف في الخانتين = الفاتورة ما تنقرأ أبدًا
-    if (
-      invoiceFile.name === prescriptionFile.name &&
-      invoiceFile.size === prescriptionFile.size &&
-      invoiceFile.lastModified === prescriptionFile.lastModified
-    ) {
-      setSubmitError(
-        "You uploaded the same file twice. Please add the invoice in the Invoice field."
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       const formData = new FormData();
-      formData.append("invoice", invoiceFile);
-      formData.append("report", prescriptionFile);
+      files.forEach((file) => formData.append("files", file));
       if (userId) {
         formData.append("user_id", userId);
       }
@@ -188,48 +146,63 @@ function NewClaim({ onBack, onSubmitClaim, userId }) {
             <div className="section-heading">
               <div>
                 <h2 id="documents-title">Documents</h2>
-                <span className="required-count">2 Required</span>
+                <span className="required-count">Invoice + medical report</span>
               </div>
-              <p>{uploadedCount} / 2 Uploaded</p>
+              <p>{uploadedCount} file{uploadedCount === 1 ? "" : "s"} attached</p>
             </div>
 
-            <div className="document-grid">
-              <div className="document-card">
-                <UploadField
-                  id="invoice"
-                  label="Invoice"
-                  file={invoiceFile}
-                  onChange={updateFile(setInvoiceFile)}
-                  onRemove={() => {
-                    setInvoiceFile(null);
-                    setHasInteracted(true);
-                    setSuccessMessage("");
-                  }}
-                />
-                {hasInteracted && !invoiceFile && (
-                  <p className="field-error">Please upload an invoice.</p>
-                )}
-              </div>
+            <p className="dropzone-hint">
+              Attach the invoice, the medical report, and anything else related to this
+              treatment. If a single document already contains the billing and the clinical
+              details, that one file is enough — we check the information, not the number of
+              files.
+            </p>
 
-              <div className="document-card">
-                <UploadField
-                  id="medical-prescription"
-                  label="Medical Prescription"
-                  file={prescriptionFile}
-                  onChange={updateFile(setPrescriptionFile)}
-                  onRemove={() => {
-                    setPrescriptionFile(null);
-                    setHasInteracted(true);
-                    setSuccessMessage("");
-                  }}
-                />
-                {hasInteracted && !prescriptionFile && (
-                  <p className="field-error">
-                    Please upload a medical prescription.
-                  </p>
-                )}
-              </div>
+            <div
+              className={`dropzone${isDragging ? " is-dragging" : ""}`}
+              onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={onDrop}
+            >
+              <input
+                id="claim-files"
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.webp"
+                onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }}
+              />
+              <label htmlFor="claim-files">
+                <span className="dropzone-icon" aria-hidden="true">↑</span>
+                <strong>Drop your files here, or browse</strong>
+                <small>PDF, PNG or JPG · up to 8 files</small>
+              </label>
             </div>
+
+            {files.length > 0 && (
+              <ul className="file-list">
+                {files.map((file, index) => (
+                  <li key={`${file.name}-${file.lastModified}`}>
+                    <span className="file-icon" aria-hidden="true">▤</span>
+                    <span className="file-meta">
+                      <strong>{file.name}</strong>
+                      <small>{(file.size / 1024).toFixed(0)} KB</small>
+                    </span>
+                    <button
+                      type="button"
+                      className="file-remove"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() => removeFile(index)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {hasInteracted && files.length === 0 && (
+              <p className="field-error">Attach at least one document to continue.</p>
+            )}
           </section>
 
           {successMessage && (

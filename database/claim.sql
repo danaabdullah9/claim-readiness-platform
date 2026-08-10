@@ -208,7 +208,7 @@
 
 -- SELECT * FROM Diagnoses;
 
--- SELECT * FROM Claims;
+--DELETE FROM Claims;
 
 -- SELECT * FROM Documents;
 
